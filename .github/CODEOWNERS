@@ -1,0 +1,22 @@
+# Aarka Tech code owners. Replace @OWNER with the maintainer's GitHub username before publishing
+# (docs/RELEASING.md). Paths must exist: tests/codeowners-paths.test.mjs checks every pattern.
+/README.md             @OWNER
+/SECURITY.md           @OWNER
+/CONTRIBUTING.md       @OWNER
+/NOTICE.md             @OWNER
+/LICENSE               @OWNER
+/.github/              @OWNER
+/automation/           @OWNER
+/web/                  @OWNER
+/update-system.mjs     @OWNER
+/merge-tracker.mjs     @OWNER
+/DATA_CONTRACT.md      @OWNER
+/plugins-registry/     @OWNER
+/docs/PRIVACY.md       @OWNER
+/.agents/skills/career-ops/SKILL.md  @OWNER
+/AGENTS.md  @OWNER
+/CLAUDE.md  @OWNER
+/CODEX.md  @OWNER
+/OPENCODE.md  @OWNER
+/KIMI.md  @OWNER
+/GEMINI.md  @OWNER

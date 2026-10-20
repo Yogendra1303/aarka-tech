@@ -1,0 +1,35 @@
+name: Bug report
+description: Something in Aarka Tech doesn't work as described.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste your real resume, profile, tracker rows, API keys, tokens or ID documents.**
+        Reproduce with the fictional data in `examples/` if you can.
+        Security problems go to Security → Report a vulnerability, not here.
+  - type: input
+    id: version
+    attributes: { label: Version or commit, placeholder: "0.1.0-alpha.1 or the output of git rev-parse --short HEAD" }
+    validations: { required: true }
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [My Career Hub, Dashboard, Explore Jobs, Applications, Follow-ups, Documents, Automation, Job Sources, Analytics, Integrations & Settings, Scanner / CLI, Install, Other]
+    validations: { required: true }
+  - type: input
+    id: platform
+    attributes: { label: OS and Node version, placeholder: "macOS 15.1, Node 22.11" }
+    validations: { required: true }
+  - type: textarea
+    id: steps
+    attributes: { label: Steps to reproduce, placeholder: "1. Open Explore Jobs\n2. …" }
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes: { label: What you expected and what happened }
+    validations: { required: true }
+  - type: textarea
+    id: logs
+    attributes: { label: Error output, description: "Remove names, emails, URLs of your applications and anything personal first.", render: text }
