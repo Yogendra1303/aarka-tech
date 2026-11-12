@@ -12,7 +12,7 @@
 ## Install
 
 ```bash
-git clone https://github.com/<you>/aarka-tech.git
+git clone https://github.com/Yogendra1303/aarka-tech.git
 cd aarka-tech
 npm install                     # scanner, PDF and CLI tools
 npm --prefix web ci        # web app

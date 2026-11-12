@@ -1,22 +1,22 @@
-# Aarka Tech code owners. Replace @OWNER with the maintainer's GitHub username before publishing
+# Aarka Tech code owners. Replace @Yogendra1303 with the maintainer's GitHub username before publishing
 # (docs/RELEASING.md). Paths must exist: tests/codeowners-paths.test.mjs checks every pattern.
-/README.md             @OWNER
-/SECURITY.md           @OWNER
-/CONTRIBUTING.md       @OWNER
-/NOTICE.md             @OWNER
-/LICENSE               @OWNER
-/.github/              @OWNER
-/automation/           @OWNER
-/web/                  @OWNER
-/update-system.mjs     @OWNER
-/merge-tracker.mjs     @OWNER
-/DATA_CONTRACT.md      @OWNER
-/plugins-registry/     @OWNER
-/docs/PRIVACY.md       @OWNER
-/.agents/skills/career-ops/SKILL.md  @OWNER
-/AGENTS.md  @OWNER
-/CLAUDE.md  @OWNER
-/CODEX.md  @OWNER
-/OPENCODE.md  @OWNER
-/KIMI.md  @OWNER
-/GEMINI.md  @OWNER
+/README.md             @Yogendra1303
+/SECURITY.md           @Yogendra1303
+/CONTRIBUTING.md       @Yogendra1303
+/NOTICE.md             @Yogendra1303
+/LICENSE               @Yogendra1303
+/.github/              @Yogendra1303
+/automation/           @Yogendra1303
+/web/                  @Yogendra1303
+/update-system.mjs     @Yogendra1303
+/merge-tracker.mjs     @Yogendra1303
+/DATA_CONTRACT.md      @Yogendra1303
+/plugins-registry/     @Yogendra1303
+/docs/PRIVACY.md       @Yogendra1303
+/.agents/skills/career-ops/SKILL.md  @Yogendra1303
+/AGENTS.md  @Yogendra1303
+/CLAUDE.md  @Yogendra1303
+/CODEX.md  @Yogendra1303
+/OPENCODE.md  @Yogendra1303
+/KIMI.md  @Yogendra1303
+/GEMINI.md  @Yogendra1303

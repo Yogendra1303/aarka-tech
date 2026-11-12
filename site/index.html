@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aarka Tech · Free, local-first job search</title>
+<meta name="description" content="Aarka Tech is a free, open-source job-search workspace that runs on your own computer: find roles worldwide, see your fit, tailor your resume and track applications. Your data never leaves your machine.">
+<meta property="og:title" content="Aarka Tech · Free, local-first job search">
+<meta property="og:description" content="Find roles worldwide, see how well you fit, tailor your resume and track every application, on your own computer.">
+<meta property="og:image" content="/img/dashboard.png">
+<link rel="icon" href="/img/favicon.png">
+<style>
+@font-face{font-family:"Manrope";src:url("/fonts/manrope-latin-wght-normal.woff2") format("woff2");font-weight:200 800;font-display:swap}
+:root{--orange:#EC5E27;--milk:#FDFDF1;--ink:#11110F;--muted:#5d5b52;--line:#e6e3d3;--card:#ffffff;--soft:#fbe7dc;--bg:var(--milk);--fg:var(--ink)}
+@media (prefers-color-scheme:dark){:root{--bg:#11110F;--fg:#f3f1e6;--muted:#a9a69a;--line:#2b2a25;--card:#1a1916;--soft:#3a2117}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:Manrope,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+header.top{display:flex;align-items:center;gap:12px;padding:20px 0}
+header.top img{width:36px;height:36px;border-radius:50%}
+.brand{font-weight:800;font-size:20px;letter-spacing:-.02em}
+.brand span{color:var(--orange)}
+header.top nav{margin-left:auto;display:flex;gap:18px;font-size:14px;font-weight:600}
+header.top nav a{text-decoration:none;color:var(--muted)}
+header.top nav a:hover{color:var(--fg)}
+.hero{padding:56px 0 32px;display:grid;gap:36px}
+.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;color:var(--muted)}
+h1{font-size:clamp(36px,6vw,64px);line-height:1.04;letter-spacing:-.04em;margin:14px 0 16px;font-weight:800}
+h1 em{font-style:normal;color:var(--orange)}
+.lead{font-size:clamp(17px,2vw,20px);color:var(--muted);max-width:640px;margin:0}
+.ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:12px;padding:12px 18px;font-weight:700;text-decoration:none;font-size:15px}
+.btn.primary{background:var(--orange);color:#fff}
+.btn.ghost{border:1px solid var(--line);background:var(--card)}
+.shot{border-radius:16px;border:1px solid var(--line);overflow:hidden;box-shadow:0 30px 60px -30px rgba(0,0,0,.35);background:var(--card)}
+.shot img{display:block;width:100%;height:auto}
+section{padding:48px 0}
+h2{font-size:clamp(26px,3.5vw,36px);letter-spacing:-.03em;margin:0 0 8px;font-weight:800}
+.sub{color:var(--muted);margin:0 0 28px;max-width:680px}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+.card h3{margin:0 0 6px;font-size:17px;letter-spacing:-.01em}
+.card p{margin:0;color:var(--muted);font-size:15px}
+.tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--orange);margin-bottom:8px}
+.gallery{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.gallery figure{margin:0}
+.gallery figcaption{font-size:14px;color:var(--muted);margin-top:8px}
+.privacy{background:var(--soft);border-radius:20px;padding:28px}
+.privacy ul{margin:12px 0 0;padding-left:20px}
+.privacy li{margin:6px 0}
+pre{background:#11110F;color:#f3f1e6;border-radius:14px;padding:18px;overflow:auto;font-size:14px;line-height:1.6}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.note{font-size:14px;color:var(--muted)}
+footer{border-top:1px solid var(--line);padding:28px 0 48px;font-size:13px;color:var(--muted)}
+footer a{color:var(--muted)}
+@media (max-width:640px){header.top nav{display:none}.hero{padding-top:28px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <img src="/img/icon.png" alt="">
+    <div class="brand">Aarka <span>Tech</span></div>
+    <nav aria-label="Page">
+      <a href="#features">Features</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/Yogendra1303/aarka-tech">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div>
+        <span class="pill">Free · Open source · Public alpha 0.1</span>
+        <h1>Your job search, <em>on your own computer.</em></h1>
+        <p class="lead">Aarka Tech finds roles worldwide, shows how well you fit each one, tailors your resume and cover letter, and tracks every application and follow-up. Your resume and records stay on your machine.</p>
+        <div class="ctas">
+          <a class="btn primary" href="https://github.com/Yogendra1303/aarka-tech">Get it on GitHub</a>
+          <a class="btn ghost" href="#install">How to install</a>
+        </div>
+      </div>
+      <div class="shot"><img src="/img/dashboard.png" alt="Aarka Tech dashboard with sample data: new postings, shortlist, follow-ups and next actions" width="2160" height="1350"></div>
+    </div>
+
+    <section id="features" aria-labelledby="f-h">
+      <h2 id="f-h">Everything from search to follow-up</h2>
+      <p class="sub">Searching and tracking are free and need no AI. For evaluations and tailored documents, connect an AI tool you already use.</p>
+      <div class="grid">
+        <div class="card"><span class="tag">Discover</span><h3>Global job search</h3><p>Scans public company career pages. Filter by country, city, work mode, seniority and freshness, and favourite the companies you care about.</p></div>
+        <div class="card"><span class="tag">Decide</span><h3>Fit you can see</h3><p>Each evaluated job shows a score, a verdict, requirements you match or miss, and what to do next. Nothing is invented.</p></div>
+        <div class="card"><span class="tag">Apply</span><h3>Tailored documents</h3><p>Resumes and cover letters built from your verified profile, checked against your source resume before you use them.</p></div>
+        <div class="card"><span class="tag">Track</span><h3>Applications and follow-ups</h3><p>A stage board for every role, "Mark already applied", reminders when it's time to follow up.</p></div>
+        <div class="card"><span class="tag">Add</span><h3>Any job link</h3><p>Paste a link from anywhere. Sign-in pages are never bypassed; paste the description instead.</p></div>
+        <div class="card"><span class="tag">Profile</span><h3>Career Hub</h3><p>Upload your resume, review what was read, fill gaps from a checklist, and see an evidence-based SWOT of your profile.</p></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="g-h">
+      <h2 id="g-h">A look inside</h2>
+      <p class="sub">Screenshots use fictional sample data.</p>
+      <div class="gallery">
+        <figure class="shot"><img src="/img/explore.png" alt="Explore Jobs with filters and job cards" loading="lazy" width="2160" height="1350"></figure>
+        <figure class="shot"><img src="/img/career-hub.png" alt="Career Hub checklist with editable rows" loading="lazy" width="2160" height="1350"></figure>
+        <figure class="shot"><img src="/img/add-job.png" alt="Add a Job page for pasting a job link" loading="lazy" width="2160" height="1350"></figure>
+        <figure class="shot"><img src="/img/explore-dark.png" alt="Explore Jobs in dark mode" loading="lazy" width="2160" height="1350"></figure>
+      </div>
+    </section>
+
+    <section id="privacy" aria-labelledby="p-h">
+      <div class="privacy">
+        <h2 id="p-h">Private by design</h2>
+        <ul>
+          <li>Runs on your computer. There is no Aarka Tech server or account, and no tracking.</li>
+          <li>Your resume, profile and tracker are plain files you own.</li>
+          <li>API keys go to your macOS Keychain. An optional encrypted vault holds ID and salary documents and never sends them anywhere.</li>
+          <li>Nothing is ever sent, submitted or posted for you. Gmail support only creates drafts.</li>
+          <li>AI is optional, uses the provider you choose, and is never switched on without your confirmation.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="install" aria-labelledby="i-h">
+      <h2 id="i-h">Install</h2>
+      <p class="sub">Needs Node.js 22.6+ and Git. macOS is the main platform for this alpha; the web app and job search also run on Linux and Windows.</p>
+<pre><code>git clone https://github.com/Yogendra1303/aarka-tech.git
+cd aarka-tech
+npm install
+npm --prefix web ci
+npm --prefix web run build
+npm --prefix web start      # open http://127.0.0.1:3000</code></pre>
+      <p class="note">This page is a project overview. The app itself runs on your own machine, where your data lives; there is no hosted version.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>Aarka Tech is free software under the MIT License, based on <a href="https://github.com/career-ops-hq/career-ops">career-ops</a> by Santiago Fernández de Valderrama. It is an independent project, not affiliated with or endorsed by career-ops. <a href="https://github.com/Yogendra1303/aarka-tech">Source code</a> · <a href="https://github.com/Yogendra1303/aarka-tech/blob/main/docs/PRIVACY.md">Privacy</a> · <a href="https://github.com/Yogendra1303/aarka-tech/blob/main/SECURITY.md">Security</a></p>
+  </footer>
+</div>
+</body>
+</html>

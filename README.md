@@ -33,7 +33,7 @@ Nothing is ever sent, submitted or posted for you. Applications, emails and recr
 Requirements: Node.js 22.6 or newer, npm, Git. macOS is the primary platform for this alpha; Linux and Windows run the web app and scanner but not the Keychain-based features (see [limitations](docs/KNOWN_LIMITATIONS.md)).
 
 ```bash
-git clone https://github.com/<you>/aarka-tech.git
+git clone https://github.com/Yogendra1303/aarka-tech.git
 cd aarka-tech
 npm install
 npm --prefix web ci
