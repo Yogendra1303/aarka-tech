@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import { NextResponse } from "next/server";
-import { assetPath, docPath, readHub, refreshGithub, saveAsset, saveLink, saveOriginal, saveOverview, saveProject, updateAsset, updateDoc } from "@/lib/arka/hub";
+import { assetPath, docPath, importGithubRepos, previewGithubRepos, readHub, readIntegrations, refreshGithub, saveAsset, saveLink, saveOriginal, saveOverview, saveProject, updateAsset, updateDoc } from "@/lib/arka/hub";
 import { readJsonObject } from "@/lib/json-body";
+import { updatePreferences } from "@/lib/arka/profile";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,7 +46,14 @@ export async function POST(req: Request) {
     if (body.action === "project") return NextResponse.json({ project: saveProject((body.project || {}) as Record<string, unknown>) });
     if (body.action === "overview") { saveOverview(body as { headline?: string; summary?: string }); return NextResponse.json({ ok: true }); }
     if (body.action === "asset") { updateAsset(String(body.id), body.patch as Record<string, never>); return NextResponse.json({ ok: true }); }
-    if (body.action === "link") { saveLink(String(body.service), String(body.url || "")); return NextResponse.json({ ok: true }); }
+    if (body.action === "link") {
+      saveLink(String(body.service), String(body.url || ""));
+      // One LinkedIn URL: the profile (used on resumes) follows the Connected accounts row.
+      if (body.service === "linkedin") updatePreferences({ linkedin: String(readIntegrations().find((i) => i.id === "linkedin")?.url || "").replace(/^https?:\/\/(www\.)?/, "") });
+      return NextResponse.json({ ok: true, integrations: readIntegrations() });
+    }
+    if (body.action === "github-preview") return NextResponse.json({ repos: await previewGithubRepos() });
+    if (body.action === "github-import") return NextResponse.json(importGithubRepos((body.repos || []) as never));
     if (body.action === "github-refresh") return NextResponse.json({ sync: await refreshGithub() });
     if (body.action === "doc") { updateDoc(String(body.id), { label: body.label as string | undefined, archived: body.archived as boolean | undefined }); return NextResponse.json({ ok: true }); }
     return NextResponse.json({ error: "Unknown action." }, { status: 400 });

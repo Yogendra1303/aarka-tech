@@ -1,6 +1,7 @@
 "use client";
 
 import { ArkaGmailCard } from "@/components/arka-gmail-card";
+import { ResumeUploadButton } from "@/components/arka-resume-upload";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -17,6 +18,7 @@ type Hub = {
   assets: { id: string; name: string; visibility: string; project?: string; added: string; size: number; archived?: boolean }[];
   integrations: { id: string; name: string; kind: string; contributes: string; url: string | null; saved: string | null; lastSync: string | null; repos: number | null; topRepos: { name: string; url: string; description: string | null; language: string | null }[] }[];
   resumeStatus: { masterUpdated: string | null; originals: number; tailored: number; covers: number };
+  swot: { strengths: SwotItem[]; weaknesses: SwotItem[]; opportunities: SwotItem[]; threats: SwotItem[]; meta: { updated: string | null; profileVersion: string; jobs: number; jobRange: string; stale: boolean; staleWhy: string }; jobSpecific: { company: string; role: string; n: string; gaps: number }[] };
 };
 const TABS = [["overview", "Career overview"], ["experience", "Employment & projects"], ["assets", "Career assets"], ["insights", "Career intelligence"], ["checklist", "Checklist"], ["accounts", "Connected accounts"]] as const;
 type Tab = (typeof TABS)[number][0];
@@ -48,7 +50,7 @@ export function ArkaCareerHub() {
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-faint">My Career Hub</p>
       <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
         <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-[-0.03em] text-foreground"><UserRound className="size-6 text-brand-text" /> {hub?.overview.name || "Your career profile"}</h1>
-        <Link href="/cv" className={primary}><Upload className="size-4" /> Upload or update resume</Link>
+        <ResumeUploadButton className={primary} onDone={(text) => { setMsg({ tone: "ok", text }); void load(); }} />
       </div>
       <div role="tablist" aria-label="Career Hub sections" className="mt-5 flex gap-1 overflow-x-auto border-b border-border">
         {TABS.map(([k, label]) => (
@@ -64,8 +66,8 @@ export function ArkaCareerHub() {
           {tab === "assets" && <Assets hub={hub} post={post} reload={load} setMsg={setMsg} />}
           {tab === "experience" && <Experience hub={hub} post={post} />}
           {tab === "insights" && <Insights hub={hub} />}
-          {tab === "checklist" && <Checklist hub={hub} reload={load} setMsg={setMsg} />}
-          {tab === "accounts" && <Accounts hub={hub} post={post} />}
+          {tab === "checklist" && <Checklist hub={hub} reload={load} goTo={setTab} />}
+          {tab === "accounts" && <Accounts hub={hub} reload={load} />}
         </div>
       )}
     </div>
@@ -139,7 +141,7 @@ function Assets({ hub, post, reload, setMsg }: { hub: Hub; post: (b: Rec, ok: st
             <p className="text-xs text-muted">{rs.masterUpdated ? `Your career profile resume was last updated ${new Date(rs.masterUpdated).toLocaleDateString("en-IN")}.` : "No master resume yet."} {rs.originals} original upload(s), {rs.tailored} tailored version(s), {rs.covers} cover letter(s).</p>
           </div>
           <div className="flex gap-2">
-            <Link href="/cv" className={primary}><Upload className="size-4" /> Upload or replace resume</Link>
+            <ResumeUploadButton className={primary} label="Upload or replace resume" onDone={(text) => { setMsg({ tone: "ok", text }); void reload(); }} />
             <Link href="/documents" className={btn}><FileText className="size-3.5" /> Manage versions in Documents</Link>
           </div>
         </div>
@@ -247,122 +249,244 @@ function Experience({ hub, post }: { hub: Hub; post: (b: Rec, ok: string) => Pro
   );
 }
 
+type SwotItem = { text: string; evidence: string; scope: string; inference?: boolean };
 function Insights({ hub }: { hub: Hub }) {
-  const i = hub.insights;
-  return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <section className={card}>
-        <h2 className="flex items-center gap-2 text-sm font-bold text-foreground"><CheckCircle2 className="size-4 text-brand-text" /> Strongest demonstrated competencies</h2>
-        <p className="text-xs text-faint">Evidence-backed: skills linked to two or more sourced achievements.</p>
-        <ul className="mt-2 space-y-2 text-sm">{i.strengths.map((s) => <li key={s.name}><span className="font-semibold text-foreground">{s.name}</span> <span className="text-xs text-faint">· {s.how}</span><span className="block text-xs text-muted">e.g. {s.examples[0]}</span></li>)}</ul>
-      </section>
-      <section className={card}>
-        <h2 className="flex items-center gap-2 text-sm font-bold text-foreground"><CheckCircle2 className="size-4 text-brand-text" /> Achievements that set you apart</h2>
-        <p className="text-xs text-faint">Evidence-backed: quantified and consistent across your resume versions.</p>
-        <ul className="mt-2 space-y-1.5 text-sm text-foreground">{i.differentiators.map((d) => <li key={d.text}>{d.text}<span className="block text-xs text-faint">{d.how}</span></li>)}</ul>
-      </section>
-      <section className={card}>
-        <h2 className="flex items-center gap-2 text-sm font-bold text-foreground"><Lightbulb className="size-4 text-amber-600 dark:text-amber-400" /> Gaps seen in jobs you evaluated</h2>
-        <p className="text-xs text-faint">From the evaluator&apos;s reports on real postings. Use these to add evidence you have, not to claim skills you lack.</p>
-        <ul className="mt-2 space-y-1.5 text-sm">{i.reportGaps.length ? i.reportGaps.map((g, k) => <li key={k} className="text-foreground">{g.gap}<span className="block text-xs text-faint">{g.job}</span></li>) : <li className="text-muted">No evaluated jobs yet.</li>}</ul>
-      </section>
-      <section className={card}>
-        <h2 className="flex items-center gap-2 text-sm font-bold text-foreground"><Lightbulb className="size-4 text-amber-600 dark:text-amber-400" /> Recommendations (inferred)</h2>
-        <ul className="mt-2 space-y-2 text-sm text-foreground">
-          <li>Your target roles: {i.alignedRoles.roles.join(", ")}.<span className="block text-xs text-faint">{i.alignedRoles.how}. Change them in Checklist → preferences or your profile.</span></li>
-          {i.toolsWithoutEvidence.length > 0 && <li>Tools listed without supporting achievements: {i.toolsWithoutEvidence.join(", ")}.<span className="block text-xs text-faint">Add a project that shows them, or recruiters may discount them.</span></li>}
-          <li>Confirm consulting project dates and outcomes in Experience &amp; projects.<span className="block text-xs text-faint">{hub.projects.filter((p) => p.review_status === "needs_confirmation").length} projects are unconfirmed, so tailored resumes do not use them yet.</span></li>
-        </ul>
-      </section>
-    </div>
-  );
-}
-
-function Checklist({ hub, reload, setMsg }: { hub: Hub; reload: () => Promise<void>; setMsg: (m: { tone: "ok" | "err"; text: string } | null) => void }) {
-  const [form, setForm] = useState(hub.preferences); const [saving, setSaving] = useState(false);
-  const order = ["resume", "history", "conflicts", "projects", "achievements", "targets", "locations", "linkedin", "contact", "salary", "notice", "auth", "linkedin_export"];
-  const items = [...hub.checks].sort((a, b) => Number(a.done) - Number(b.done) || order.indexOf(a.id) - order.indexOf(b.id));
-  const optional = new Set(["salary", "notice", "auth", "linkedin_export", "linkedin"]);
-  const save = async () => {
-    setSaving(true);
-    const r = await fetch("/api/arka/profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    const j = await r.json(); setSaving(false);
-    if (!r.ok) return setMsg({ tone: "err", text: j.error });
-    setMsg({ tone: "ok", text: j.changed.length ? `Saved: ${j.changed.join(", ").replaceAll("_", " ")} (backup kept).` : "Nothing changed." }); await reload();
-  };
-  const fld = (k: string, label: string, ph: string) => <label className="block text-xs font-semibold text-muted">{label}<input className={input} value={form[k] || ""} placeholder={ph} onChange={(e) => setForm({ ...form, [k]: e.target.value })} /></label>;
-  return (
-    <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-      <section className={card}>
-        <h2 className="text-sm font-bold text-foreground">What to do next</h2>
-        <ol className="mt-3 space-y-2">{items.map((c) => (
-          <li key={c.id} className="flex gap-2 text-sm">
-            {c.done ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-brand-text" /> : <CircleDashed className="mt-0.5 size-4 shrink-0 text-faint" />}
-            <span><span className={`font-semibold ${c.done ? "text-muted" : "text-foreground"}`}>{c.label}</span>{optional.has(c.id) && <span className="ml-1 text-xs text-faint">(optional)</span>}<span className="block text-xs text-muted">{c.detail}</span></span>
+  const w = hub.swot;
+  const box = (title: string, sub: string, items: SwotItem[], tone: string, empty: string) => (
+    <section className={card}>
+      <h2 className={`text-sm font-bold ${tone}`}>{title}</h2>
+      <p className="text-xs text-faint">{sub}</p>
+      {items.length ? (
+        <ul className="mt-2 space-y-2.5 text-sm">{items.map((x) => (
+          <li key={x.text}>
+            <span className="text-foreground">{x.text}</span>
+            {x.inference && <span className="ml-1.5 rounded bg-surface-hover px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted">Inference</span>}
+            <span className="block text-xs text-muted">{x.evidence}</span>
           </li>
-        ))}</ol>
-        {hub.openQuestions.length > 0 && <><h3 className="mt-4 text-xs font-bold uppercase tracking-[0.1em] text-faint">Conflicts to confirm</h3><ul className="mt-2 space-y-1 text-xs text-foreground">{hub.openQuestions.map((q) => <li key={q.id}>{q.question || q.issue}</li>)}</ul></>}
-      </section>
-      <section className={card}>
-        <h2 className="text-sm font-bold text-foreground">Optional details</h2>
-        <p className="text-xs text-muted">Leave any of these blank; nothing else depends on them. They are never guessed.</p>
-        <div className="mt-3 grid gap-3">
-          {fld("target_range", "Target salary", "e.g. 45–55 LPA or AED 35,000/month")}{fld("currency", "Currency", "INR or AED")}
-          {fld("notice_period_days", "Notice period (days)", "e.g. 30")}{fld("visa_status", "UAE work authorization", "e.g. needs employer visa")}
-        </div>
-        <button className={`${primary} mt-4`} disabled={saving} onClick={save}>{saving ? <Loader2 className="size-4 animate-spin" /> : null} Save details</button>
-      </section>
+        ))}</ul>
+      ) : <p className="mt-2 text-sm text-muted">{empty}</p>}
+    </section>
+  );
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-faint">
+        Built from your career records{w.meta.jobs ? ` and ${w.meta.jobs} evaluated job${w.meta.jobs === 1 ? "" : "s"}${w.meta.jobRange ? ` (${w.meta.jobRange})` : ""}` : ""}. {w.meta.profileVersion}{w.meta.updated ? ` · records updated ${new Date(w.meta.updated).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}. No AI is used to compute this page.
+        {w.meta.stale && <span className="mt-1 block font-semibold text-amber-700 dark:text-amber-300">{w.meta.staleWhy}</span>}
+      </p>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {box("Strengths", "Backed by achievements in your records.", w.strengths, "text-emerald-700 dark:text-emerald-300", "Add achievements with results to see strengths here.")}
+        {box("Weaknesses", "Gaps in the evidence your profile gives, not skills you're assumed to lack.", w.weaknesses, "text-amber-700 dark:text-amber-300", "No evidence gaps found.")}
+        {box("Opportunities", "Inferences from your profile and evaluated jobs, with the basis shown.", w.opportunities, "text-brand-text", "Evaluate a few jobs to see patterns.")}
+        {box("Threats", "Only constraints that came up in two or more evaluated postings.", w.threats, "text-red-700 dark:text-red-300", w.meta.jobs < 2 ? "Needs at least two evaluated jobs." : "No constraint repeats across postings.")}
+      </div>
+      {w.jobSpecific.length > 0 && (
+        <section className={card}>
+          <h2 className="text-sm font-bold text-foreground">Gaps for a single job</h2>
+          <p className="text-xs text-faint">These belong to one posting, not your whole career, so they live on that job&apos;s evaluation.</p>
+          <ul className="mt-2 flex flex-wrap gap-2 text-sm">{w.jobSpecific.map((j) => <li key={j.n}><Link className={btn} href={`/pipeline/${j.n}`}>{j.company} · {j.role.slice(0, 40)} <span className="text-faint">{j.gaps} gaps</span></Link></li>)}</ul>
+        </section>
+      )}
     </div>
   );
 }
 
-function Accounts({ hub, post }: { hub: Hub; post: (b: Rec, ok: string) => Promise<boolean> }) {
+type Check = Hub["checks"][number] & { state?: string; neededFor?: string; section?: string };
+const STATE_TONE: Record<string, string> = { present: "border-emerald-500/30 text-emerald-700 dark:text-emerald-300", missing: "border-border text-muted", incomplete: "border-amber-500/40 text-amber-700 dark:text-amber-300", outdated: "border-amber-500/40 text-amber-700 dark:text-amber-300" };
+const STATE_LABEL: Record<string, string> = { present: "Present", missing: "Missing", incomplete: "Incomplete", outdated: "May be outdated" };
+const CURRENCIES = ["INR", "AED", "USD", "EUR", "GBP", "SGD", "SAR", "QAR", "AUD", "CAD"];
+
+function Checklist({ hub, reload, goTo }: { hub: Hub; reload: () => Promise<void>; goTo: (t: Tab) => void }) {
+  const [form, setForm] = useState<Record<string, string>>(hub.preferences);
+  useEffect(() => { setForm(hub.preferences); }, [hub.preferences]);
+  const [open, setOpen] = useState<string | null>(null);
+  const [status, setStatus] = useState<{ id: string; tone: "ok" | "err"; text: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [section, setSection] = useState("all");
+  const rows = useRef<Record<string, HTMLLIElement | null>>({});
+  const order = ["resume", "contact", "linkedin", "history", "projects", "achievements", "skills", "education", "targets", "locations", "salary", "notice", "auth", "conflicts", "linkedin_export"];
+  const items = ([...hub.checks] as Check[]).sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  const sections = [...new Set(items.map((c) => c.section).filter(Boolean))] as string[];
+  const shown = section === "all" ? items : items.filter((c) => c.section === section);
+
+  const save = async (id: string, keys: string[]) => {
+    setSaving(true); setStatus(null);
+    const body = Object.fromEntries(keys.map((k) => [k, form[k] ?? ""]));
+    try {
+      const r = await fetch("/api/arka/profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Could not save.");
+      setStatus({ id, tone: "ok", text: j.changed.length ? "Saved. Your profile, resumes and evaluations now use this (a backup of the old profile was kept)." : "Nothing changed." });
+      await reload();
+      setOpen(null);
+      requestAnimationFrame(() => rows.current[id]?.scrollIntoView({ block: "nearest" }));
+    } catch (e) { setStatus({ id, tone: "err", text: (e as Error).message }); }
+    finally { setSaving(false); }
+  };
+  const fld = (k: string, label: string, ph = "", type = "text") => (
+    <label className="block text-xs font-semibold text-muted">{label}
+      <input className={input} type={type} value={form[k] || ""} placeholder={ph} onChange={(e) => setForm({ ...form, [k]: e.target.value })} />
+    </label>
+  );
+  const editor = (c: Check) => {
+    const saveBtn = (keys: string[]) => <button className={`${primary} mt-3`} disabled={saving} onClick={() => save(c.id, keys)}>{saving ? <Loader2 className="size-4 animate-spin" /> : null} Save</button>;
+    switch (c.id) {
+      case "resume": return <div className="flex flex-wrap items-center gap-2"><ResumeUploadButton className={primary} onDone={(text) => { setStatus({ id: c.id, tone: "ok", text }); void reload(); }} /><Link href="/cv" className={btn}>Edit resume text</Link></div>;
+      case "contact": return <div className="grid gap-2 sm:grid-cols-3">{fld("email", "Email", "you@example.com", "email")}{fld("phone", "Phone", "+91 …", "tel")}{fld("location", "City, country", "Gurugram, India")}<div className="sm:col-span-3">{saveBtn(["email", "phone", "location"])}</div></div>;
+      case "linkedin": return <div>{fld("linkedin", "LinkedIn profile URL", "linkedin.com/in/your-name")}{saveBtn(["linkedin"])}</div>;
+      case "targets": return <div>{fld("target_roles", "Target roles (comma separated)", "Head of Operations, General Manager")}{saveBtn(["target_roles"])}</div>;
+      case "locations": return <div>{fld("locations", "Where you'd work", "Gurugram / Delhi NCR preferred; open to Dubai")}{saveBtn(["locations"])}</div>;
+      case "salary": return (
+        <div>
+          <div className="grid gap-2 sm:grid-cols-4">
+            {fld("target_range", "Amount", "e.g. 45–55 lakh or 35,000")}
+            <label className="block text-xs font-semibold text-muted">Currency
+              <select className={input} value={form.currency || ""} onChange={(e) => setForm({ ...form, currency: e.target.value })}><option value="">Choose…</option>{CURRENCIES.map((x) => <option key={x}>{x}</option>)}</select>
+            </label>
+            <label className="block text-xs font-semibold text-muted">Per
+              <select className={input} value={form.salary_period || ""} onChange={(e) => setForm({ ...form, salary_period: e.target.value })}><option value="">Choose…</option><option value="year">year</option><option value="month">month</option><option value="hour">hour</option></select>
+            </label>
+            {fld("minimum", "Minimum (optional)", "Not set")}
+          </div>
+          <p className="mt-1 text-xs text-faint">Amount, currency and period are saved together so the number can't be misread.</p>
+          {saveBtn(["target_range", "currency", "salary_period", "minimum"])}
+        </div>
+      );
+      case "notice": return <div>{fld("notice_period_days", "Notice period in days", "e.g. 30", "number")}{saveBtn(["notice_period_days"])}</div>;
+      case "auth": return <div>{fld("visa_status", "UAE work authorization", "e.g. needs employer visa sponsorship")}{saveBtn(["visa_status"])}</div>;
+      case "history": case "projects": case "achievements": case "conflicts": return <button className={btn} onClick={() => goTo("experience")}>Open Employment &amp; projects</button>;
+      case "skills": case "education": return <div className="flex flex-wrap gap-2"><Link href="/cv" className={btn}>Edit in your resume</Link><ResumeUploadButton className={btn} label="Upload a newer resume" onDone={(text) => { setStatus({ id: c.id, tone: "ok", text }); void reload(); }} /></div>;
+      case "linkedin_export": return <button className={btn} onClick={() => goTo("accounts")}>Open Connected accounts</button>;
+      default: return null;
+    }
+  };
+  const counts = (st: string) => items.filter((c) => (c.state || (c.done ? "present" : "missing")) === st).length;
+
+  return (
+    <section className={card}>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-sm font-bold text-foreground">Profile checklist</h2>
+          <p className="text-xs text-muted">{counts("present")} present · {counts("missing")} missing · {counts("incomplete")} incomplete · {counts("outdated")} may be outdated. Blank fields stay blank; nothing is guessed.</p>
+        </div>
+        <label className="text-xs font-semibold text-muted">What do you want to update?
+          <select className={`${input} mt-1 min-w-[12rem]`} value={section} onChange={(e) => { setSection(e.target.value); const first = items.find((c) => c.section === e.target.value); if (first) { setOpen(first.id); requestAnimationFrame(() => rows.current[first.id]?.scrollIntoView({ block: "center", behavior: "smooth" })); } }}>
+            <option value="all">Everything</option>
+            {sections.map((x) => <option key={x}>{x}</option>)}
+          </select>
+        </label>
+      </div>
+      <ul className="mt-3 divide-y divide-border">
+        {shown.map((c) => {
+          const st = c.state || (c.done ? "present" : "missing");
+          return (
+            <li key={c.id} ref={(el) => { rows.current[c.id] = el; }} className="py-3">
+              <div className="flex flex-wrap items-start gap-3">
+                {st === "present" ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-brand-text" /> : <CircleDashed className="mt-0.5 size-4 shrink-0 text-faint" />}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-foreground">{c.label} <span className={`ml-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${STATE_TONE[st]}`}>{STATE_LABEL[st]}</span></p>
+                  <p className="mt-0.5 break-words text-xs text-muted">{c.detail}</p>
+                  <p className="text-[11px] text-faint">{c.neededFor ? `Needed for ${c.neededFor}` : "Optional"}</p>
+                </div>
+                <button className={btn} aria-expanded={open === c.id} onClick={() => { setOpen(open === c.id ? null : c.id); setStatus(null); }}><Pencil className="size-3" /> {open === c.id ? "Close" : st === "missing" ? "Add" : "Edit"}</button>
+              </div>
+              {open === c.id && <div className="mt-3 rounded-lg border border-border bg-background/40 p-3">{editor(c)}</div>}
+              {status?.id === c.id && (
+                <p role="status" className={`mt-2 flex flex-wrap items-center gap-2 text-xs ${status.tone === "err" ? "text-red-600 dark:text-red-400" : "text-emerald-700 dark:text-emerald-300"}`}>
+                  {status.text}{status.tone === "err" && <button className="font-semibold underline" onClick={() => setOpen(c.id)}>Try again</button>}
+                </p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {hub.openQuestions.length > 0 && <><h3 className="mt-4 text-xs font-bold uppercase tracking-[0.1em] text-faint">Facts to confirm</h3><ul className="mt-2 space-y-1 text-xs text-foreground">{hub.openQuestions.map((q) => <li key={q.id}>{q.question || q.issue}</li>)}</ul></>}
+    </section>
+  );
+}
+
+type Repo = { name: string; url: string; description: string | null; language: string | null; updated: string; fork: boolean; stars: number; imported: boolean };
+function Accounts({ hub, reload }: { hub: Hub; reload: () => Promise<void> }) {
+  const [integrations, setIntegrations] = useState(hub.integrations);
+  useEffect(() => { setIntegrations(hub.integrations); }, [hub.integrations]);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const [note, setNote] = useState<{ id: string; tone: "ok" | "err"; text: string } | null>(null);
+  const [repos, setRepos] = useState<Repo[] | null>(null);
+  const [pick, setPick] = useState<Set<string>>(new Set());
   const exp = hub.checks.find((c) => c.id === "linkedin_export");
-  const when = (s: string | null) => (s ? new Date(s).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "never");
+  const when = (s: string | null) => (s ? new Date(s).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "");
   const badge = (t: string, tone: "ok" | "muted" | "link") => <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${tone === "ok" ? "border-brand/50 text-brand-text" : tone === "link" ? "border-border text-foreground" : "border-border text-faint"}`}>{t}</span>;
+  const call = async (id: string, body: Rec) => {
+    setBusy(id); setNote(null);
+    try {
+      const r = await fetch("/api/arka/hub", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const j = await r.json(); if (!r.ok) throw new Error(j.error || "Could not save.");
+      return j;
+    } catch (e) { setNote({ id, tone: "err", text: (e as Error).message }); return null; }
+    finally { setBusy(null); }
+  };
+  // Saving a link only stores the URL: no page change, no reload, no scan.
+  const saveLink = async (id: string, name: string, url: string) => {
+    const j = await call(id, { action: "link", service: id, url });
+    if (j) { setIntegrations(j.integrations); setDraft((d) => ({ ...d, [id]: "" })); setNote({ id, tone: "ok", text: url ? `${name} link saved. It is a link only; no account access.` : `${name} link removed.` }); }
+  };
+  const preview = async () => { const j = await call("github", { action: "github-preview" }); if (j) { setRepos(j.repos); setPick(new Set(j.repos.filter((r: Repo) => !r.fork && !r.imported).map((r: Repo) => r.url))); } };
+  const doImport = async () => {
+    const j = await call("github", { action: "github-import", repos: (repos || []).filter((r) => pick.has(r.url)) });
+    if (j) { setNote({ id: "github", tone: "ok", text: j.added.length ? `Imported ${j.added.length} repositor${j.added.length === 1 ? "y" : "ies"} as projects (source: GitHub public API, ${when(j.at)}). Review them in Employment & projects.` : "Nothing new to import." }); setRepos(null); void reload(); }
+  };
+
   return (
     <div className="space-y-4">
       <ArkaGmailCard />
       <section className={card}>
-        <h2 className="text-sm font-bold text-foreground">Authorized integrations</h2>
-        <p className="text-xs text-muted">Shown as connected only after a real sign-in test succeeds.</p>
+        <h2 className="text-sm font-bold text-foreground">Profile and portfolio links</h2>
+        <p className="text-xs text-muted">Links appear on your resumes and outreach. A saved link is not a connected account: Aarka Tech never signs in to these sites.</p>
         <ul className="mt-2 divide-y divide-border text-sm">
-          <li className="flex flex-wrap items-start gap-3 py-3">
-            <div className="min-w-0 flex-1"><span className="font-semibold text-foreground">LinkedIn data export</span> {badge(exp?.done ? "Imported" : "Not imported", exp?.done ? "ok" : "muted")}
-              <span className="block text-xs text-muted">Contributes: verified job titles and dates. Method: the export you download from LinkedIn (no sign-in, no scraping). Put the files in Documents and they will be reconciled with every change recorded.</span></div>
-            <a className={btn} href="https://www.linkedin.com/mypreferences/d/download-my-data" target="_blank" rel="noreferrer">Request export <ExternalLink className="size-3" /></a>
-          </li>
+          {integrations.map((i) => (
+            <li key={i.id} className="py-3">
+              <div className="flex flex-wrap items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <span className="font-semibold text-foreground">{i.name}</span> {badge(i.url ? "Link saved" : "Not added", i.url ? "link" : "muted")}
+                  {i.url ? <a className="mt-0.5 block break-all text-xs font-semibold text-brand-text hover:underline" href={i.url} target="_blank" rel="noreferrer">{i.url}</a> : <span className="mt-0.5 block text-xs text-faint">No link saved</span>}
+                  <span className="block text-xs text-muted">{i.contributes}{i.saved ? ` · saved ${when(i.saved)}` : ""}</span>
+                </div>
+                <form className="flex flex-wrap gap-1.5" onSubmit={(e) => { e.preventDefault(); if (draft[i.id]) void saveLink(i.id, i.name, draft[i.id]); }}>
+                  <input aria-label={`${i.name} URL`} className="min-h-9 w-60 max-w-full rounded-lg border border-border bg-background/40 px-2 text-xs" placeholder={i.url ? "Replace URL" : "Paste profile URL"} value={draft[i.id] || ""} onChange={(e) => setDraft({ ...draft, [i.id]: e.target.value })} />
+                  <button type="submit" className={btn} disabled={!draft[i.id] || busy === i.id}>{busy === i.id ? <Loader2 className="size-3 animate-spin" /> : null} Save</button>
+                  {i.url && <button type="button" className={btn} onClick={() => { if (window.confirm(`Remove your ${i.name} link?`)) void saveLink(i.id, i.name, ""); }}>Remove</button>}
+                </form>
+              </div>
+              {i.id === "github" && i.url && (
+                <div className="mt-2 rounded-lg border border-border bg-background/40 p-3">
+                  <p className="text-xs text-muted">Optional: add your public repositories as projects. This reads the public repository list from GitHub&apos;s API (names, descriptions, languages; no code, no sign-in). You choose which to import.</p>
+                  {!repos ? <button type="button" className={`${btn} mt-2`} disabled={busy === "github"} onClick={preview}>{busy === "github" ? <Loader2 className="size-3 animate-spin" /> : null} Import public repositories…</button> : (
+                    <div className="mt-2">
+                      <ul className="max-h-64 space-y-1 overflow-auto text-xs">{repos.map((r) => (
+                        <li key={r.url}><label className={`flex items-start gap-2 ${r.imported ? "opacity-60" : ""}`}>
+                          <input type="checkbox" disabled={r.imported} checked={pick.has(r.url)} onChange={(e) => { const n = new Set(pick); if (e.target.checked) n.add(r.url); else n.delete(r.url); setPick(n); }} />
+                          <span><span className="font-semibold text-foreground">{r.name}</span>{r.language ? ` · ${r.language}` : ""}{r.fork ? " · fork" : ""}{r.imported ? " · already imported" : ""}{r.description ? ` — ${r.description}` : ""}</span>
+                        </label></li>
+                      ))}</ul>
+                      <div className="mt-2 flex gap-2"><button type="button" className={primary} disabled={!pick.size || busy === "github"} onClick={doImport}>Import {pick.size} selected</button><button type="button" className={btn} onClick={() => setRepos(null)}>Cancel</button></div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {note?.id === i.id && <p role="status" className={`mt-2 text-xs ${note.tone === "err" ? "text-red-600 dark:text-red-400" : "text-emerald-700 dark:text-emerald-300"}`}>{note.text}</p>}
+            </li>
+          ))}
         </ul>
       </section>
       <section className={card}>
-        <h2 className="text-sm font-bold text-foreground">Profile and portfolio links</h2>
-        <p className="text-xs text-muted">Saved links appear on resumes and outreach. GitHub can also list your public repositories through GitHub&apos;s public API.</p>
+        <h2 className="text-sm font-bold text-foreground">Imports</h2>
         <ul className="mt-2 divide-y divide-border text-sm">
-          {hub.integrations.map((i) => {
-            const url = i.url || (i.id === "linkedin" ? (hub.preferences.linkedin ? `https://${hub.preferences.linkedin.replace(/^https?:\/\//, "")}` : null) : null);
-            return (
-              <li key={i.id} className="py-3">
-                <div className="flex flex-wrap items-start gap-3">
-                  <div className="min-w-0 flex-1">
-                    <span className="font-semibold text-foreground">{i.name}</span> {badge(url ? "Link saved" : "Not added", url ? "link" : "muted")}
-                    <span className="block text-xs text-muted">Contributes: {i.contributes}.{i.kind === "public-api" ? ` Last sync: ${when(i.lastSync)}${i.repos != null ? ` · ${i.repos} public repositories` : ""}.` : " Link only, no account access."}</span>
-                    {url && <a className="block break-all text-xs text-brand-text hover:underline" href={url} target="_blank" rel="noreferrer">{url}</a>}
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    <input aria-label={`${i.name} URL`} className="min-h-9 w-60 max-w-full rounded-lg border border-border bg-background/40 px-2 text-xs" placeholder={url ? "Replace URL" : "Paste profile URL"} value={draft[i.id] || ""} onChange={(e) => setDraft({ ...draft, [i.id]: e.target.value })} />
-                    <button className={btn} disabled={!draft[i.id]} onClick={async () => { if (await post({ action: "link", service: i.id, url: draft[i.id] }, `${i.name} link saved.`)) setDraft({ ...draft, [i.id]: "" }); }}>Save</button>
-                    {i.kind === "public-api" && i.url && <button className={btn} disabled={busy === i.id} onClick={async () => { setBusy(i.id); await post({ action: "github-refresh" }, "GitHub repositories refreshed."); setBusy(null); }}>{busy === i.id ? <Loader2 className="size-3 animate-spin" /> : null} Refresh</button>}
-                    {i.url && <button className={btn} onClick={() => { if (window.confirm(`Remove your ${i.name} link${i.kind === "public-api" ? " and its synced repository list" : ""}?`)) post({ action: "link", service: i.id, url: "" }, `${i.name} link removed.`); }}>Remove</button>}
-                  </div>
-                </div>
-                {i.topRepos.length > 0 && <ul className="mt-2 grid gap-1 pl-3 text-xs text-muted sm:grid-cols-2">{i.topRepos.map((r) => <li key={r.url}><a className="font-semibold text-foreground hover:text-brand-text" href={r.url} target="_blank" rel="noreferrer">{r.name}</a>{r.language ? ` · ${r.language}` : ""}{r.description ? ` — ${r.description}` : ""}</li>)}</ul>}
-              </li>
-            );
-          })}
+          <li className="flex flex-wrap items-start gap-3 py-3">
+            <div className="min-w-0 flex-1"><span className="font-semibold text-foreground">LinkedIn data export</span> {badge(exp?.done ? "Imported" : "Not imported", exp?.done ? "ok" : "muted")}
+              <span className="block text-xs text-muted">Verified job titles and dates from the export you download from LinkedIn (no sign-in, no scraping).</span></div>
+            <a className={btn} href="https://www.linkedin.com/mypreferences/d/download-my-data" target="_blank" rel="noreferrer">Request export <ExternalLink className="size-3" /></a>
+          </li>
         </ul>
-        <p className="mt-2 text-xs text-faint">The LinkedIn link is also kept in your profile (Checklist). Saving a link never marks an account as connected.</p>
       </section>
     </div>
   );

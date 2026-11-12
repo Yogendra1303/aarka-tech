@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
@@ -28,7 +28,7 @@ const STYLE = `
 .co-cvtrace{animation:co-rise .4s ease both}
 `;
 
-export function CvIngest({ onSaved }: { onSaved?: () => void }) {
+export function CvIngest({ onSaved, initialFile, stayAfterSave = false }: { onSaved?: () => void; initialFile?: File; stayAfterSave?: boolean }) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("input");
   const [paste, setPaste] = useState("");
@@ -144,6 +144,12 @@ export function CvIngest({ onSaved }: { onSaved?: () => void }) {
     void runStream({ method: "POST", body: form });
   };
 
+  // Opened from an "Upload resume" button: start reading the chosen file straight away, once.
+  const started = useRef(false);
+  useEffect(() => {
+    if (initialFile && !started.current) { started.current = true; ingestFile(initialFile); }
+  }, [initialFile]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [saveErr, setSaveErr] = useState("");
   const save = async () => {
     if (!md.trim()) {
@@ -166,6 +172,7 @@ export function CvIngest({ onSaved }: { onSaved?: () => void }) {
       return;
     }
     onSaved?.();
+    if (stayAfterSave) return;
     // WOW #1 — land in the Explorer with the CV-derived filters in the URL + run=1,
     // so the Explorer auto-fires the FREE scan itself (robust, no push/replaceState race).
     // GENEROUS first scan so it never comes back empty (that would kill the wow): roles
@@ -306,7 +313,7 @@ export function CvIngest({ onSaved }: { onSaved?: () => void }) {
           className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-brand-foreground shadow-sm transition hover:brightness-110 disabled:opacity-60"
         >
           {phase === "saving" ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-          Save &amp; find my matches
+          {stayAfterSave ? "Save as my resume" : <>Save &amp; find my matches</>}
         </button>
         <button
           type="button"

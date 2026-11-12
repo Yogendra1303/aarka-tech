@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, BellOff, Search, Plus, Star, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ATS_LABEL, type AtsSource, type DiscoveredOffer } from "@/lib/explore";
@@ -11,11 +11,12 @@ import { DiscoveryCard } from "./discovery-card";
 import { useExplore } from "./explore-provider";
 import { useExplorePrefs } from "./use-explore-prefs";
 
-export type EnrichedOffer = DiscoveredOffer & { inPipeline: boolean; evaluatedN?: string };
+export type EnrichedOffer = DiscoveredOffer & { inPipeline: boolean; evaluatedN?: string; appStatus?: string };
 
 const PAGE = 24;
-type Facet = "company" | "country" | "city" | "mode" | "type" | "level" | "fit" | "source" | "fresh";
+type Facet = "status" | "company" | "country" | "city" | "mode" | "type" | "level" | "fit" | "source" | "fresh";
 const FACETS: { id: Facet; title: string }[] = [
+  { id: "status", title: "Your status" },
   { id: "country", title: "Country" }, { id: "city", title: "City" }, { id: "mode", title: "Work mode" },
   { id: "level", title: "Seniority" }, { id: "type", title: "Employment type" }, { id: "fit", title: "Match to your profile" },
   { id: "company", title: "Company" }, { id: "source", title: "Job board" }, { id: "fresh", title: "Posted" },
@@ -23,8 +24,12 @@ const FACETS: { id: Facet; title: string }[] = [
 const FIT_LABEL: Record<string, string> = { strong: "Strong match", related: "Related", weak: "Weak match" };
 const age = (d: string) => (d ? Math.floor((Date.now() - new Date(d).getTime()) / 864e5) : NaN);
 const freshOf = (o: DiscoveredOffer) => { const a = age(o.postedAt); return Number.isNaN(a) ? "Date not stated" : a <= 1 ? "Last 24 hours" : a <= 3 ? "Last 3 days" : a <= 7 ? "Last week" : "Older"; };
+const statusOf = (o: EnrichedOffer, added: Set<string>) =>
+  /applied|responded|assessment|interview|offer|hired/i.test(o.appStatus || "") ? "Applied" : o.evaluatedN ? "Evaluated" : o.inPipeline || added.has(o.url) ? "Saved" : "New";
+let ADDED: Set<string> = new Set();
 const facetOf = (o: EnrichedOffer, f: Facet): string => {
   switch (f) {
+    case "status": return statusOf(o, ADDED);
     case "company": return companyName(o.company);
     case "country": return countryOf(o.location);
     case "city": return cityName(o.location);
@@ -36,7 +41,7 @@ const facetOf = (o: EnrichedOffer, f: Facet): string => {
     case "fresh": return freshOf(o);
   }
 };
-const NONE: Record<Facet, string | null> = { company: null, country: null, city: null, mode: null, type: null, level: null, fit: null, source: null, fresh: null };
+const NONE: Record<Facet, string | null> = { status: null, company: null, country: null, city: null, mode: null, type: null, level: null, fit: null, source: null, fresh: null };
 
 function FacetGroup({ title, entries, active, onPick }: { title: string; entries: [string, number][]; active: string | null; onPick: (v: string | null) => void }) {
   const [more, setMore] = useState(false);
@@ -97,13 +102,18 @@ function FavouritesPanel({ offers }: { offers: EnrichedOffer[] }) {
 }
 
 export function ResultsList({ offers: all }: { offers: EnrichedOffer[] }) {
-  const { companiesScanned, partial, error, addToPipeline, added, mode, running } = useExplore();
+  const { companiesScanned, partial, error, addToPipeline, added, mode, running, matchCount } = useExplore();
   const { prefs, isFavourite, undismissAll } = useExplorePrefs();
   const isAi = mode === "ai";
-  const [sort, setSort] = useState<"fresh" | "company" | "fit">("fresh");
-  const [q, setQ] = useState("");
-  const [pick, setPick] = useState<Record<Facet, string | null>>(NONE);
-  const [shown, setShown] = useState(PAGE);
+  ADDED = added;
+  // Search, filters, sort and how far you'd scrolled survive opening a job and coming back
+  // (this tab only). Clear filters resets all of it.
+  const saved = (() => { try { return JSON.parse(sessionStorage.getItem("aarka:explore-results") || "null"); } catch { return null; } })() as { q?: string; pick?: Record<Facet, string | null>; sort?: "mix" | "fresh" | "company" | "fit"; shown?: number } | null;
+  const [sort, setSort] = useState<"mix" | "fresh" | "company" | "fit">(saved?.sort ?? "mix");
+  const [q, setQ] = useState(saved?.q ?? "");
+  const [pick, setPick] = useState<Record<Facet, string | null>>({ ...NONE, ...(saved?.pick ?? {}) });
+  const [shown, setShown] = useState(saved?.shown ?? PAGE);
+  useEffect(() => { try { sessionStorage.setItem("aarka:explore-results", JSON.stringify({ q, pick, sort, shown })); } catch { /* storage off */ } }, [q, pick, sort, shown]);
   const [showDismissed, setShowDismissed] = useState(false);
 
   const dismissed = useMemo(() => new Set(prefs.dismissed), [prefs.dismissed]);
@@ -124,20 +134,37 @@ export function ResultsList({ offers: all }: { offers: EnrichedOffer[] }) {
   const view = useMemo(() => {
     const needle = q.trim().toLowerCase();
     let list = offers.filter((o) => matchesExcept(o));
-    if (needle) list = list.filter((o) => `${o.title} ${o.company} ${companyName(o.company)} ${o.location}`.toLowerCase().includes(needle));
-    return [...list].sort((a, b) => {
+    if (needle) {
+      // Every word must match somewhere: title, employer (raw and merged name), location
+      // (raw, city and country, so "Bangalore" finds "Bengaluru"), the matched keyword and notes.
+      const words = needle.split(/\s+/).filter(Boolean).map((w) => [w, cityName(w).toLowerCase()]);
+      list = list.filter((o) => {
+        const hay = `${o.title} ${o.company} ${companyName(o.company)} ${o.location} ${cityName(o.location)} ${countryOf(o.location)} ${o.matchedKeyword || ""} ${o.why || ""} ${o.note || ""}`.toLowerCase();
+        return words.every(([w, alias]) => hay.includes(w) || (alias.length > 2 && hay.includes(alias)));
+      });
+    }
+    const sorted = [...list].sort((a, b) => {
       if (prefs.prioritizeFavourites) { const d = Number(isFavourite(b.company)) - Number(isFavourite(a.company)); if (d) return d; }
-      return sort === "fresh" ? (b.postedAt || "").localeCompare(a.postedAt || "")
+      return sort === "fresh" || sort === "mix" ? (b.postedAt || "").localeCompare(a.postedAt || "")
         : sort === "fit" ? (b.fit?.score ?? -1) - (a.fit?.score ?? -1)
           : companyName(a.company).localeCompare(companyName(b.company));
     });
-  }, [offers, q, sort, pick, prefs.prioritizeFavourites, prefs.favourites]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setShown(PAGE); }, [q, sort, pick]);
+    if (sort !== "mix") return sorted;
+    // Newest first, but one employer at a time in turn so a single company can't fill the page.
+    // Re-orders only; every job is still there.
+    const queues = new Map<string, EnrichedOffer[]>();
+    for (const o of sorted) { const k = companyName(o.company); queues.set(k, [...(queues.get(k) || []), o]); }
+    const out: EnrichedOffer[] = [];
+    while (out.length < sorted.length) for (const q of queues.values()) { const x = q.shift(); if (x) out.push(x); }
+    return out;
+  }, [offers, q, sort, pick, prefs.prioritizeFavourites, prefs.favourites, added]); // eslint-disable-line react-hooks/exhaustive-deps
+  const firstRender = useRef(true);
+  useEffect(() => { if (firstRender.current) { firstRender.current = false; return; } setShown(PAGE); }, [q, sort, pick]);
 
   const page = view.slice(0, shown);
   const addable = view.filter((o) => !o.inPipeline && !o.evaluatedN && !added.has(o.url));
   const activePicks = (Object.entries(pick) as [Facet, string | null][]).filter(([, v]) => v);
-  const clearAll = () => { setPick(NONE); setQ(""); };
+  const clearAll = () => { setPick(NONE); setQ(""); setSort("mix"); setShown(PAGE); };
   const title = (f: Facet) => FACETS.find((x) => x.id === f)?.title;
 
   return (
@@ -151,7 +178,10 @@ export function ResultsList({ offers: all }: { offers: EnrichedOffer[] }) {
               <CostBadge kind={isAi ? "spend" : "free-network"} size="xs" className="ml-2 align-middle" />
             </p>
             <p className="text-[12px] text-faint">
-              {isAi ? "Found by AI on the open web; unverified until you evaluate." : `${companiesScanned > 0 ? `${companiesScanned.toLocaleString()} companies searched · ` : ""}free${partial ? " · a few career pages didn't answer" : ""}${running ? " · still searching…" : ""}`}
+              {isAi ? "Found by AI on the open web; unverified until you evaluate."
+                : companiesScanned > 0
+                  ? `From this search of ${companiesScanned.toLocaleString()} company career pages${partial ? "; a few didn't answer" : ""}${running ? " · still searching…" : ""}. Not every job board is covered.`
+                  : `From your saved scan results, not a live search${matchCount > all.length ? ` · newest ${all.length.toLocaleString()} of ${matchCount.toLocaleString()} loaded` : ""}.`}
             </p>
             {!isAi && error && <p className="text-[12px] text-amber-700 dark:text-amber-300">{error}</p>}
           </div>
@@ -162,7 +192,7 @@ export function ResultsList({ offers: all }: { offers: EnrichedOffer[] }) {
             </span>
             <label className="flex items-center gap-1.5 text-xs text-muted">Sort
               <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="min-h-9 rounded-lg border border-border bg-surface px-2 text-xs font-semibold text-foreground">
-                <option value="fresh">Newest</option><option value="fit">Best match</option><option value="company">Company A–Z</option>
+                <option value="mix">Newest, mixed employers</option><option value="fresh">Newest</option><option value="fit">Best match</option><option value="company">Company A–Z</option>
               </select>
             </label>
             {addable.length > 1 && (
@@ -202,8 +232,8 @@ export function ResultsList({ offers: all }: { offers: EnrichedOffer[] }) {
           )}
         </aside>
         <div className="min-w-0">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {page.map((o) => <DiscoveryCard key={o.url} offer={o} inPipeline={o.inPipeline} evaluatedN={o.evaluatedN} />)}
+          <div className="grid gap-3 pb-24 sm:grid-cols-2 xl:grid-cols-3">
+            {page.map((o) => <DiscoveryCard key={o.url} offer={o} inPipeline={o.inPipeline} evaluatedN={o.evaluatedN} appStatus={o.appStatus} />)}
           </div>
           {view.length === 0 && !running && (
             <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center text-sm text-muted">

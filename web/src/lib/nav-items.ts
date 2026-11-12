@@ -1,4 +1,4 @@
-import { UserRound, LayoutDashboard, Compass, ListChecks, Send, Radar, BarChart3, Files, Settings, CalendarClock } from "lucide-react";
+import { UserRound, LayoutDashboard, Compass, ListChecks, Send, Radar, BarChart3, Files, Settings, CalendarClock , Link2 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
 // Single source of truth for the app's primary destinations — shared by the
@@ -14,6 +14,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/profile", label: "My Career Hub", icon: UserRound },
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/explore", label: "Explore Jobs", icon: Compass },
+  { href: "/add-job", label: "Add a Job", icon: Link2 },
   { href: "/pipeline", label: "Applications", icon: ListChecks },
   { href: "/followups", label: "Follow-ups", icon: Send },
   { href: "/documents", label: "Documents", icon: Files },

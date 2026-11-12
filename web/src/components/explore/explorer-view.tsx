@@ -41,7 +41,7 @@ export function ExplorerView({
   appsSnapshot: Application[];
   rootExists: boolean;
 }) {
-  const { filters, setFilters, initFilters, phase, running, offers, discover, loadFresh, status, employerOutcome, error, scannerMissing, mode, setMode, aiIntent, setAiIntent, discoverAI, companiesScanned, companiesAvailable, capHit, droppedNoDate, partial } = useExplore();
+  const { filters, setFilters, initFilters, phase, running, loadingSaved, offers, discover, loadFresh, status, employerOutcome, error, scannerMissing, mode, setMode, aiIntent, setAiIntent, discoverAI, companiesScanned, companiesAvailable, capHit, droppedNoDate, partial } = useExplore();
   const scanNote =
     companiesScanned > 0
       ? `Scanned ${companiesScanned.toLocaleString()}${companiesAvailable > companiesScanned ? ` of ${companiesAvailable.toLocaleString()}` : ""} compan${companiesScanned === 1 ? "y" : "ies"}${partial ? " · some sources were unreachable" : ""}.`
@@ -90,6 +90,7 @@ export function ExplorerView({
     }
   }, [seed.filters, initFilters, setMode, setAiIntent, discover, loadFresh]);
 
+  const urlKeyOf = (raw: string) => { try { const u = new URL(raw); return `${u.host.replace(/^www\./, "")}${u.pathname.replace(/\/+$/, "")}`.toLowerCase(); } catch { return raw; } };
   const inboxUrls = useMemo(() => new Set(inboxSnapshot.map((j) => j.url)), [inboxSnapshot]);
   const enriched: EnrichedOffer[] = useMemo(
     () =>
@@ -97,12 +98,17 @@ export function ExplorerView({
         const inPipeline = inboxUrls.has(o.url);
         const c = norm(o.company);
         const t = norm(o.title);
-        const ev = appsSnapshot.find((a) => {
+        // Same posting first (by link), then the same employer and title, so a similar title
+        // at the same company is never shown as this job's evaluation.
+        const key = urlKeyOf(o.url);
+        const ev = appsSnapshot.find((a) => a.url && urlKeyOf(a.url) === key) ?? appsSnapshot.find((a) => {
           if (norm(a.company) !== c) return false;
           const ar = norm(a.role);
-          return ar.length > 3 && (t.includes(ar) || ar.includes(t.split(" ").slice(0, 3).join(" ")));
+          return ar.length > 3 && (t === ar || t.includes(ar) || ar.includes(t));
         });
-        return { ...o, inPipeline, evaluatedN: ev?.n };
+        // Only a row with a real evaluation counts as evaluated; a self-reported application has none.
+        const evaluated = ev && ev.report && ev.report !== "N/A" && !/n\/a/i.test(ev.score || "");
+        return { ...o, inPipeline, evaluatedN: evaluated ? ev!.n : undefined, appStatus: ev?.status };
       }),
     [offers, inboxUrls, appsSnapshot],
   );
@@ -111,7 +117,7 @@ export function ExplorerView({
   const isResults = phase === "results";
   const employer = filters.preset === CHINA_PRESET;
   const canDiscover = !running && (employer ? (filters.employers?.length ?? 0) > 0 : filters.ats.length > 0);
-  const scanRunning = running && !isAi && !employer;
+  const scanRunning = running && !isAi && !employer && !loadingSaved;
   // Keep one ResultsList mounted across scanning → revealing → results so
   // filter/sort/scroll and co-rise survive the 850ms reveal handoff.
   const showScanList = !isAi && offers.length > 0 && (scanRunning || isResults);
@@ -119,9 +125,10 @@ export function ExplorerView({
   if (running && isAi) return <AiHuntView cliName={cli.name} />;
 
   return (
-    <div className={scanRunning ? undefined : "mx-auto max-w-6xl px-5 py-8 md:px-8"}>
+    <div className={scanRunning ? undefined : "mx-auto max-w-7xl px-5 py-8 md:px-8"}>
       <p role="status" aria-live="polite" aria-atomic="true" className="mb-4 text-sm text-muted">{!isAi && (employerOutcome?.message || (employer && running ? "Scanning selected employers…" : ""))}</p>
       {scanRunning && <DiscoveringState />}
+      {loadingSaved && <p role="status" className="mb-4 flex items-center gap-2 text-sm text-muted"><span className="size-2 animate-pulse rounded-full bg-brand" /> Loading your saved scan results…</p>}
       {!scanRunning && (
         <>
       <header className="mb-6">
@@ -217,7 +224,7 @@ export function ExplorerView({
       )}
 
       {showScanList && (
-        <div className={scanRunning ? "relative z-[1] mx-auto max-w-6xl px-5 pb-10 md:px-8" : undefined}>
+        <div className={scanRunning ? "relative z-[1] mx-auto max-w-7xl px-5 pb-10 md:px-8" : undefined}>
           <ResultsList offers={enriched} />
         </div>
       )}

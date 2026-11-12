@@ -27,7 +27,7 @@ export function AppShell({ children, followupsEnabled }: { children: React.React
       <ExploreProvider>
       <MobileNav followupsEnabled={followupsEnabled} />
       <div className="flex min-h-screen">
-        <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface/30 p-4 md:flex">
+        <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface/30 p-4 pb-20 md:flex">
           <Link href="/" aria-label="Aarka Tech home" className="mb-6 flex items-center px-1">
             <ArkaWordmark size={32} />
           </Link>
@@ -59,7 +59,7 @@ export function AppShell({ children, followupsEnabled }: { children: React.React
 
           <WorkerPills />
 
-          <div className="mt-auto space-y-3 pb-16 pt-4">
+          <div className="mt-auto space-y-3 pt-4">
             <SidebarUsage />
             <div className="space-y-1.5">
               <div className="flex items-center justify-between px-1">

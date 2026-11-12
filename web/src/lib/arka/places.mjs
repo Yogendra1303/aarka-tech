@@ -24,31 +24,57 @@ export const COUNTRIES = [
   { name: "South Africa", cities: ["Cape Town", "Johannesburg"] }, { name: "Nigeria", cities: ["Lagos"] }, { name: "Kenya", cities: ["Nairobi"] }, { name: "Morocco", cities: ["Casablanca"] },
 ];
 
-const ALIASES = { uae: "United Arab Emirates", usa: "United States", us: "United States", "united states of america": "United States", uk: "United Kingdom", "great britain": "United Kingdom", england: "United Kingdom", ksa: "Saudi Arabia", "south korea": "South Korea", korea: "South Korea" };
+const ALIASES = { uae: "United Arab Emirates", usa: "United States", us: "United States", "u.s.": "United States", "united states of america": "United States", uk: "United Kingdom", "great britain": "United Kingdom", england: "United Kingdom", scotland: "United Kingdom", wales: "United Kingdom", ksa: "Saudi Arabia", korea: "South Korea", "republic of korea": "South Korea", czechia: "Czech Republic", "türkiye": "Turkey", turkiye: "Turkey", holland: "Netherlands", "the netherlands": "Netherlands", "hong kong sar": "Hong Kong", "russian federation": "Russia", "viet nam": "Vietnam", "deutschland": "Germany", "españa": "Spain", "méxico": "Mexico", "brasil": "Brazil", "polska": "Poland", "österreich": "Austria", "schweiz": "Switzerland", "suisse": "Switzerland", "italia": "Italy", "magyarország": "Hungary", "україна": "Ukraine" };
+const US_STATES = { al: 1, ak: 1, az: 1, ar: 1, ca: 1, co: 1, ct: 1, de: 1, fl: 1, ga: 1, hi: 1, id: 1, il: 1, ia: 1, ks: 1, ky: 1, la: 1, me: 1, md: 1, ma: 1, mi: 1, mn: 1, ms: 1, mo: 1, mt: 1, ne: 1, nv: 1, nh: 1, nj: 1, nm: 1, ny: 1, nc: 1, nd: 1, oh: 1, ok: 1, or: 1, pa: 1, ri: 1, sc: 1, sd: 1, tn: 1, tx: 1, ut: 1, vt: 1, va: 1, wa: 1, wv: 1, wi: 1, wy: 1, dc: 1 };
 const STATE_COUNTRY = {
-  karnataka: "India", maharashtra: "India", haryana: "India", "uttar pradesh": "India", telangana: "India", "tamil nadu": "India", delhi: "India", "west bengal": "India", gujarat: "India", kerala: "India", rajasthan: "India", "andhra pradesh": "India",
-  california: "United States", "new york": "United States", texas: "United States", washington: "United States", massachusetts: "United States", illinois: "United States", florida: "United States", colorado: "United States", georgia: "United States",
-  ontario: "Canada", "british columbia": "Canada", quebec: "Canada", "new south wales": "Australia", victoria: "Australia",
+  karnataka: "India", maharashtra: "India", haryana: "India", "uttar pradesh": "India", telangana: "India", "tamil nadu": "India", "west bengal": "India", gujarat: "India", kerala: "India", rajasthan: "India", "andhra pradesh": "India", punjab: "India", "madhya pradesh": "India", odisha: "India",
+  alabama: "United States", alaska: "United States", arizona: "United States", arkansas: "United States", california: "United States", colorado: "United States", connecticut: "United States", delaware: "United States", florida: "United States", georgia: "United States", hawaii: "United States", idaho: "United States", illinois: "United States", indiana: "United States", iowa: "United States", kansas: "United States", kentucky: "United States", louisiana: "United States", maine: "United States", maryland: "United States", massachusetts: "United States", michigan: "United States", minnesota: "United States", mississippi: "United States", missouri: "United States", montana: "United States", nebraska: "United States", nevada: "United States", "new hampshire": "United States", "new jersey": "United States", "new mexico": "United States", "new york": "United States", "north carolina": "United States", "north dakota": "United States", ohio: "United States", oklahoma: "United States", oregon: "United States", pennsylvania: "United States", "rhode island": "United States", "south carolina": "United States", "south dakota": "United States", tennessee: "United States", texas: "United States", utah: "United States", vermont: "United States", virginia: "United States", washington: "United States", "west virginia": "United States", wisconsin: "United States", wyoming: "United States",
+  ontario: "Canada", "british columbia": "Canada", quebec: "Canada", alberta: "Canada", "new south wales": "Australia", victoria: "Australia", queensland: "Australia", bavaria: "Germany", "île-de-france": "France", catalonia: "Spain",
 };
-const CITY_COUNTRY = new Map(COUNTRIES.flatMap((c) => c.cities.map((city) => [city.toLowerCase(), c.name])));
-for (const [k, v] of Object.entries({ bangalore: "India", gurgaon: "India", "new delhi": "India", bombay: "India", "ncr": "India", "delhi ncr": "India", nyc: "United States", sf: "United States" })) CITY_COUNTRY.set(k, v);
+const EXTRA_CITIES = { prishtina: "Kosovo", pristina: "Kosovo", philadelphia: "United States", bremen: "Germany", praha: "Czech Republic", prague: "Czech Republic", brno: "Czech Republic", budapest: "Hungary", kyiv: "Ukraine", kiev: "Ukraine", lviv: "Ukraine", bucharest: "Romania", sofia: "Bulgaria", belgrade: "Serbia", zagreb: "Croatia", vilnius: "Lithuania", riga: "Latvia", tallinn: "Estonia", istanbul: "Turkey", rochester: "United States", "buenos aires": "Argentina", "são paulo": "Brazil", "sao paulo": "Brazil", lima: "Peru", montevideo: "Uruguay", "santo domingo": "Dominican Republic", "panama city": "Panama", "san josé": "Costa Rica", "san jose, costa rica": "Costa Rica", "kuala lumpur": "Malaysia", "makati": "Philippines", "taguig": "Philippines", "hanoi": "Vietnam", "karachi": "Pakistan", "lahore": "Pakistan", "dhaka": "Bangladesh", "colombo": "Sri Lanka", "kathmandu": "Nepal", "cairo": "Egypt", "lagos": "Nigeria", "nairobi": "Kenya", "accra": "Ghana", "johannesburg": "South Africa", "cape town": "South Africa", "casablanca": "Morocco", "tunis": "Tunisia", "amman": "Jordan", "beirut": "Lebanon", "dubai": "United Arab Emirates", "abu dhabi": "United Arab Emirates", "berlin": "Germany", "munich": "Germany", "münchen": "Germany", "hamburg": "Germany", "vienna": "Austria", "wien": "Austria", "zurich": "Switzerland", "zürich": "Switzerland", "milano": "Italy", "roma": "Italy", "lisboa": "Portugal", "warszawa": "Poland", "kraków": "Poland", "gurgaon": "India", "bangalore": "India", "new delhi": "India", "bombay": "India", "ncr": "India", "delhi ncr": "India", "nyc": "United States", "sf": "United States", "bay area": "United States" };
+const CITY_COUNTRY = new Map([...COUNTRIES.flatMap((c) => c.cities.map((city) => [city.toLowerCase(), c.name])), ...Object.entries(EXTRA_CITIES)]);
+// Every ISO country name the runtime knows, so a stated country is never "unknown".
 const COUNTRY_NAMES = new Map(COUNTRIES.map((c) => [c.name.toLowerCase(), c.name]));
+const ISO = new Map();
+try {
+  const dn = new Intl.DisplayNames(["en"], { type: "region" });
+  for (let a = 65; a <= 90; a++) for (let b = 65; b <= 90; b++) {
+    const code = String.fromCharCode(a, b); let name; try { name = dn.of(code); } catch { continue; }
+    if (name && name !== code && !/unknown/i.test(name)) { ISO.set(code.toLowerCase(), name); if (!COUNTRY_NAMES.has(name.toLowerCase())) COUNTRY_NAMES.set(name.toLowerCase(), name); }
+  }
+} catch { /* runtime without Intl.DisplayNames: the lists above still apply */ }
+for (const [k, v] of [["czechia", "Czech Republic"], ["türkiye", "Turkey"]]) COUNTRY_NAMES.set(k, v);
+const canon = (/** @type {string} */ n) => ({ "Czechia": "Czech Republic", "Türkiye": "Turkey", "United States of America": "United States", "Hong Kong SAR China": "Hong Kong" })[n] || n;
+export const UNKNOWN_COUNTRY = "Unknown / not specified";
 
-/** @param {unknown} raw @returns {string} The posting's country, "Remote / worldwide", or "Not stated". */
+/** @param {unknown} raw @returns {string} The posting's country, "Remote / worldwide", or "Unknown / not specified". */
 export function countryOf(raw) {
-  const s = String(raw || "").toLowerCase();
-  if (!s.trim()) return "Not stated";
-  const parts = s.split(/[·,;|/()]+|\s+-\s+/).map((p) => p.trim()).filter(Boolean);
+  const s = String(raw || "").toLowerCase().trim();
+  if (!s) return UNKNOWN_COUNTRY;
+  const parts = s.split(/[·,;|/()]+|\s+-\s+|\s+–\s+/).map((p) => p.trim()).filter(Boolean);
   for (const p of [...parts].reverse()) {
-    if (COUNTRY_NAMES.has(p)) return /** @type {string} */ (COUNTRY_NAMES.get(p));
+    if (COUNTRY_NAMES.has(p)) return canon(/** @type {string} */ (COUNTRY_NAMES.get(p)));
     if (ALIASES[/** @type {keyof typeof ALIASES} */ (p)]) return ALIASES[/** @type {keyof typeof ALIASES} */ (p)];
   }
   for (const p of parts) {
     if (CITY_COUNTRY.has(p)) return /** @type {string} */ (CITY_COUNTRY.get(p));
     if (STATE_COUNTRY[/** @type {keyof typeof STATE_COUNTRY} */ (p)]) return STATE_COUNTRY[/** @type {keyof typeof STATE_COUNTRY} */ (p)];
   }
+  // "Austin, TX" style: a US state code after a comma.
+  const last = parts[parts.length - 1];
+  if (parts.length >= 2 && last.length === 2 && US_STATES[/** @type {keyof typeof US_STATES} */ (last)]) return "United States";
+  // A trailing ISO code such as ", DE" or ", IN" (only when it's the last part and there are 2+ parts).
+  if (parts.length >= 2 && last.length === 2 && ISO.has(last)) return canon(ISO.get(last));
+  // Last pass: a country, state or known city named anywhere as whole words
+  // ("Czechia Praha", "FL-ACG Florida AOB", "PA - Philadelphia").
+  const padded = ` ${s.replace(/[^\p{L}\p{N}]+/gu, " ")} `;
+  const hit = (/** @type {Iterable<[string, string]>} */ entries) => { let best = ""; let val = ""; for (const [k, v] of entries) if (k.length > best.length && k.length > 3 && padded.includes(` ${k} `)) { best = k; val = v; } return val; };
+  const byCountry = hit(COUNTRY_NAMES.entries()); if (byCountry) return canon(byCountry);
+  const byState = hit(Object.entries(STATE_COUNTRY)); if (byState) return byState;
+  const byCity = hit(CITY_COUNTRY.entries()); if (byCity) return byCity;
+  const first = parts[0]; if (first && first.length === 2 && US_STATES[/** @type {keyof typeof US_STATES} */ (first)] && /\s-\s/.test(s)) return "United States";
   if (/remote|anywhere|worldwide|global/.test(s)) return "Remote / worldwide";
-  return "Other";
+  return UNKNOWN_COUNTRY;
 }
 
 /** @param {unknown} text @returns {string} */
@@ -56,7 +82,13 @@ export function workModeOf(text) {
   const s = String(text || "").toLowerCase();
   if (/hybrid/.test(s)) return "Hybrid";
   if (/remote|work from home|wfh|anywhere/.test(s)) return "Remote";
-  return "On-site or not stated";
+  if (/on-?site|in[- ]office|office[- ]based|in person|work from office|\bwfo\b/.test(s)) return "On-site";
+  return "Not stated";
+}
+
+/** @param {unknown} name @returns {boolean} Whether this is a city we know (not a site name like "Store 332"). */
+export function isKnownCity(name) {
+  return CITY_COUNTRY.has(String(name || "").toLowerCase());
 }
 
 /** @param {unknown} text @returns {string} */

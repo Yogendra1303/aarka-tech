@@ -29,6 +29,9 @@ import { KeywordCoverage } from "@/components/keyword-coverage";
 import { CompanyEvidence } from "@/components/company-evidence";
 import { companyPresentation } from "@/lib/company-presentation.mjs";
 import { PageFrame } from "@/components/page-frame";
+import { parseReportModel } from "@/lib/arka/report-model";
+import { ReportActionPlan, ReportCoverage, ReportDecisionHeader, ReportDetailsMeta, ReportFitSummary } from "@/components/arka-report-summary";
+import { MarkAppliedButton } from "@/components/arka-mark-applied";
 
 // Progressive disclosure of the report. Current oferta.md writes letter F as
 // Interview Plan (STAR+R), not a verdict — never promote by letter (#3416).
@@ -87,199 +90,99 @@ export function ReportView({
   const company = app ? companyPresentation(app) : null;
   const companyName = company?.label ?? app?.company ?? meta?.title ?? id;
 
+  const model = report ? parseReportModel(report) : null;
+  const pill = "inline-flex items-center justify-center gap-1.5 rounded-lg border border-border px-3 text-sm font-semibold text-foreground transition-colors hover:border-brand/40 hover:text-brand-text min-h-9 max-sm:min-h-[44px]";
+  const actions = (
+    <>
+      {app && <StatusSelect n={id} current={app.status} />}
+      <GeneratePdfButton n={id} company={app?.company ?? meta?.title ?? id} pdfReady={pdfReady} />
+      {app && report && <CoverDraftButton n={id} company={companyName} />}
+      {applyHref && <Link href={applyHref} className={pill}>Application answers</Link>}
+      {app && <MarkAppliedButton n={id} current={app.status} />}
+      <MarkPdfReadyButton reportNum={reportNum} ready={pdfReady} />
+      {coverReady && (
+        <a href={`/api/cover-pdf?application=${encodeURIComponent(id)}`} target="_blank" rel="noreferrer" className={pill}>
+          <FileText className="size-3.5" /> View cover letter
+        </a>
+      )}
+    </>
+  );
+  const companyHeading = (
+    <div className="flex items-center gap-3">
+      <CompanyLogo name={company?.logoName ?? meta?.title ?? `Report #${id}`} size={40} />
+      <h1 className="text-2xl font-extrabold tracking-[-0.02em] text-foreground">{company?.label ?? meta?.title ?? `Report #${id}`}</h1>
+      <span className="font-mono text-xs text-faint">#{id}</span>
+    </div>
+  );
+
   return (
-    <PageFrame className="max-w-3xl xl:max-w-5xl 2xl:max-w-[1600px]">
-      <Link
-        href={backHref}
-        className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-brand"
-      >
-        <ArrowLeft className="size-4" /> Pipeline
+    <PageFrame className="max-w-5xl">
+      <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-brand">
+        <ArrowLeft className="size-4" /> Applications
       </Link>
 
-      <header className="mt-5">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-faint">#{id}</p>
-        <div className="mt-2 flex items-center gap-3">
-          <CompanyLogo name={company?.logoName ?? meta?.title ?? `Report #${id}`} size={40} />
-          <h1 className="font-display text-3xl tracking-tight text-landing">
-            {company?.label ?? meta?.title ?? `Report #${id}`}
-          </h1>
-        </div>
-        {app?.role && <p className="mt-1 text-muted">{app.role}</p>}
-
-        <div className="mt-4 flex flex-wrap items-center gap-2.5">
-          {app && <StatusSelect n={id} current={app.status} />}
-          <GeneratePdfButton n={id} company={app?.company ?? meta?.title ?? id} pdfReady={pdfReady} />
-          {app && report && <CoverDraftButton n={id} company={companyName} />}
-          {applyHref && (
-            <Link
-              href={applyHref}
-              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted transition-colors hover:border-brand/40 hover:text-brand max-sm:min-h-[44px]"
-            >
-              Apply checklist
-            </Link>
-          )}
-          <MarkPdfReadyButton reportNum={reportNum} ready={pdfReady} />
-          {coverReady && (
-            <a
-              href={`/api/cover-pdf?application=${encodeURIComponent(id)}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-500/15 dark:text-emerald-400 max-sm:min-h-[44px]"
-            >
-              <FileText className="size-3.5" /> View cover
-            </a>
-          )}
-        </div>
-
-        {app && canDelete && (
-          <div className="mt-3">
-            <DeleteFromTracker n={id} />
-          </div>
-        )}
-
-        {(archetype || date || applyUrl) && (
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-            {archetype && <span className="max-w-full truncate">{archetype}</span>}
-            {date && <span className="tabular-nums text-faint">{date}</span>}
-            {applyUrl && (
-              <a
-                href={applyUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center gap-1 text-brand hover:underline max-sm:min-h-[44px]"
-              >
-                posting <ExternalLink className="size-3" />
-              </a>
-            )}
-          </div>
-        )}
-      </header>
-
-      {report ? (
+      {report && model ? (
         <>
+          <ReportDecisionHeader m={model} company={companyHeading} role={app?.role} actions={actions} />
+          <ReportFitSummary m={model} />
+          <ReportCoverage m={model} />
+          <ReportActionPlan m={model} />
           {(() => {
-            const { intro, sections } = splitSections(meta?.body ?? report);
-            const verdictSection = sections.find((s) => isVerdictHeading(s.heading));
-            const rest = sections.filter((s) => s !== verdictSection);
-            const machine = rest.filter((s) => isMachine(s.heading));
-            const mainSections = rest.filter((s) => !isMachine(s.heading));
-            const reason = verdictReason({
-              report,
-              intro,
-              verdictContent: verdictSection?.content,
-            });
-            const verdictClass = recommended
-              ? "border-brand/25 bg-brand-soft/50"
-              : "border-border bg-surface/50";
-            const callout = (
-              <div className={`rounded-2xl border px-5 py-5 ${verdictClass}`}>
-                <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-faint">Verdict</p>
-                <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
-                  {score ? (
-                    <p className="font-display text-4xl tabular-nums tracking-tight text-landing">{score}</p>
-                  ) : (
-                    <p className="text-sm text-muted">No score on this report.</p>
-                  )}
-                  <p className="pb-1 text-xs text-muted">Apply line is {APPLY_LINE.toFixed(1)}</p>
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {score && <Badge tone={scoreTone(score)}>{score}</Badge>}
-                  {line && <Badge tone={recommended ? "good" : line === "Below the apply line" ? "muted" : "warn"}>{line}</Badge>}
-                  {decision && <Badge tone="info">{decision}</Badge>}
-                  {meta?.legitimacy && <Badge tone={legitimacyTone(meta.legitimacy)}>{meta.legitimacy}</Badge>}
-                </div>
-                {reason && <p className="mt-4 text-[15px] font-medium leading-relaxed text-foreground">{reason}</p>}
-                <div className="mt-4">
-                  <ApplyButton
-                    n={id}
-                    url={applyUrl}
-                    company={companyName}
-                    pdfReady={pdfReady}
-                    quiet={quietApply}
-                  />
-                </div>
-              </div>
-            );
-            if (sections.length === 0) {
-              return (
-                <div className="mt-8 max-w-4xl">
-                  {callout}
-                  <ScoreLevers report={report} />
-                  <article className="report-prose mt-6">
-                    <ReportMarkdown>{meta?.body ?? report}</ReportMarkdown>
-                  </article>
-                </div>
-              );
-            }
+            const { sections } = splitSections(meta?.body ?? report);
+            const machine = sections.filter((s) => isMachine(s.heading));
+            const mainSections = sections.filter((s) => !isMachine(s.heading) && !isVerdictHeading(s.heading));
             return (
-              <div className="mt-8 max-w-4xl">
-                {callout}
+              <>
+                <h2 className="mt-8 text-sm font-bold uppercase tracking-[0.12em] text-faint">Full evaluation</h2>
                 <ScoreLevers report={report} />
-
-                {mainSections.map((s, i) => {
-                  const expanded = isLeadSection(s);
-                  if (expanded) {
-                    return (
-                      <article key={i} className="report-prose mt-6">
-                        <h2>{cleanHeading(s.heading)}</h2>
-                        <ReportMarkdown>{s.content}</ReportMarkdown>
-                      </article>
-                    );
-                  }
-                  return (
-                    <details key={i} className="group mt-3 overflow-hidden rounded-xl border border-border bg-surface/30">
-                      <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 px-4 py-3 transition-colors hover:bg-surface-hover">
-                        <span className="text-sm font-medium">{cleanHeading(s.heading)}</span>
-                        <span className="hidden truncate text-xs text-faint sm:inline">{sectionPreview(s.content)}</span>
-                        <ChevronDown className="ml-auto size-4 shrink-0 text-faint transition-transform group-open:rotate-180" />
-                      </summary>
-                      <div className="report-prose border-t border-border px-4 py-3">
-                        <ReportMarkdown>{s.content}</ReportMarkdown>
-                      </div>
-                    </details>
-                  );
-                })}
+                {mainSections.map((s, i) => (
+                  <details key={i} className="group mt-2 overflow-hidden rounded-xl border border-border bg-surface/40">
+                    <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 px-4 py-3 transition-colors hover:bg-surface-hover">
+                      <span className="text-sm font-semibold">{cleanHeading(s.heading)}</span>
+                      <span className="hidden truncate text-xs text-faint sm:inline">{sectionPreview(s.content)}</span>
+                      <ChevronDown className="ml-auto size-4 shrink-0 text-faint transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="report-prose border-t border-border px-4 py-3"><ReportMarkdown>{s.content}</ReportMarkdown></div>
+                  </details>
+                ))}
                 <PrepPack report={report} company={companyName} />
-
-                {machine.length > 0 && (
-                  <>
-                    <div className="mt-6 flex items-center gap-3 text-[11px] uppercase tracking-[0.14em] text-faint">
-                      <span className="h-px flex-1 bg-border" />
-                      Technical details · for developers
-                      <span className="h-px flex-1 bg-border" />
-                    </div>
+                <KeywordCoverage reportId={id} />
+                {app?.company && <CompanyEvidence company={app.company} />}
+                <details className="group mt-6 overflow-hidden rounded-xl border border-border/60 bg-surface/20">
+                  <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-semibold text-muted hover:bg-surface-hover">
+                    Evaluation details
+                    <ChevronDown className="ml-auto size-4 shrink-0 text-faint transition-transform group-open:rotate-180" />
+                  </summary>
+                  <div className="space-y-4 border-t border-border/60 px-4 py-4">
+                    <ReportDetailsMeta m={model} />
                     {machine.map((s, i) => (
-                      <details key={i} className="group mt-2 overflow-hidden rounded-xl border border-border/60 bg-surface/20">
-                        <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 px-4 py-3 font-mono text-xs text-muted transition-colors hover:bg-surface-hover">
-                          {cleanHeading(s.heading)}
-                          <ChevronDown className="ml-auto size-4 shrink-0 text-faint transition-transform group-open:rotate-180" />
-                        </summary>
-                        <div className="report-prose border-t border-border/60 px-4 py-3">
-                          <ReportMarkdown>{s.content}</ReportMarkdown>
-                        </div>
+                      <details key={i} className="rounded-lg border border-border/60">
+                        <summary className="cursor-pointer px-3 py-2 font-mono text-xs text-muted">{cleanHeading(s.heading)}</summary>
+                        <div className="report-prose border-t border-border/60 px-3 py-2"><ReportMarkdown>{s.content}</ReportMarkdown></div>
                       </details>
                     ))}
-                  </>
-                )}
-              </div>
+                    <ScoreMethodology />
+                    {app && canDelete && <DeleteFromTracker n={id} />}
+                  </div>
+                </details>
+              </>
             );
           })()}
-          {/* After the report body: the reader has just decided whether the
-              offer is worth applying to, and this answers the next question —
-              whether the CV they would send reads as a match for it. */}
-          <KeywordCoverage reportId={id} />
-          {/* Then the company itself. Only with a tracker row: the card is keyed
-              on a company name, and a report with no row has none to look up —
-              guessing one from the report would surface another company's
-              history. */}
-          {app?.company && <CompanyEvidence company={app.company} />}
-          <ScoreMethodology />
         </>
       ) : (
-        <div className="mt-8 flex items-center gap-3 rounded-2xl border border-dashed border-border bg-surface/30 p-5 text-sm text-muted">
-          <FileText className="size-5 shrink-0 text-faint" />
-          No report file found for #{id} in <code className="text-foreground">reports/</code>.
-        </div>
+        <>
+          <header className="mt-5">
+            {companyHeading}
+            {app?.role && <p className="mt-1 text-muted">{app.role}</p>}
+            <div className="mt-4 flex flex-wrap items-center gap-2.5">{actions}</div>
+            {applyUrl && <a href={applyUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-sm text-brand hover:underline">Open original posting <ExternalLink className="size-3" /></a>}
+            {app && canDelete && <div className="mt-3"><DeleteFromTracker n={id} /></div>}
+          </header>
+          <div className="mt-8 flex items-center gap-3 rounded-2xl border border-dashed border-border bg-surface/30 p-5 text-sm text-muted">
+            <FileText className="size-5 shrink-0 text-faint" />
+            No evaluation report yet for #{id}. Evaluate the job to see your fit.
+          </div>
+        </>
       )}
     </PageFrame>
   );

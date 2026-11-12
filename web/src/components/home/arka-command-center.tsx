@@ -34,6 +34,7 @@ export function ArkaCommandCenter({ newThisWeek, followupsDue, awaiting, packHre
   const [profile, setProfile] = useState<{ completion: number; checks: { id: string; label: string; done: boolean }[] } | null>(null);
   type Overview = { awaitingEvaluation: number; shortlisted: number; toDecide: number; inProgress: number; interviews: number; staleApplied: { n: string; company: string; role: string; date: string }[]; strongest: { n: string; company: string; role: string; score: string; status: string; verdict: string; strength: string }[]; favourites: number; favouriteRoles: { company: string; role: string; url: string }[] };
   const [ov, setOv] = useState<Overview | null>(null);
+  const [showAll, setShowAll] = useState(false);
   useEffect(() => { fetch("/api/arka/overview", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((j) => j && setOv(j)).catch(() => {}); }, []);
   const mounted = useRef(true);
   useEffect(() => { fetch("/api/arka/profile").then((r) => (r.ok ? r.json() : null)).then((j) => j && setProfile(j)).catch(() => {}); }, []);
@@ -98,8 +99,8 @@ export function ArkaCommandCenter({ newThisWeek, followupsDue, awaiting, packHre
   const pendingAi = status?.queue ? status.queue.rank + status.queue.evaluate + status.queue.pack : null;
   const n = (v: number | null | undefined) => (v == null ? "—" : String(v));
   const tiles: { label: string; value: string; hint: string; href?: string; warn?: boolean }[] = [
-    { label: "Awaiting evaluation", value: n(ov?.awaitingEvaluation), hint: "New postings to review", href: "/pipeline?tab=INBOX" },
-    { label: "Shortlisted", value: n(ov?.shortlisted), hint: `Fit 4+ not applied yet (${n(ov?.toDecide)} to decide)`, href: "/pipeline?focus=decide&fit=4" },
+    { label: "Awaiting evaluation", value: n(ov?.awaitingEvaluation), hint: "All unreviewed postings in New postings", href: "/pipeline?tab=INBOX" },
+    { label: "Shortlisted", value: n(ov?.shortlisted), hint: "Evaluated, fit 4+, not applied yet", href: "/pipeline?focus=decide&fit=4" },
     { label: "In progress", value: n(ov?.inProgress), hint: "Applied, responded or assessment", href: "/pipeline?focus=applied" },
     { label: "Interviews & replies", value: n(ov?.interviews), hint: "Interviewing or recruiter replied", href: "/pipeline?focus=interview" },
     { label: "Follow-ups due", value: n(followupsDue), hint: "Overdue or due today", href: "/followups" },
@@ -188,7 +189,7 @@ export function ArkaCommandCenter({ newThisWeek, followupsDue, awaiting, packHre
       <div className="space-y-3">
         <div className="rounded-xl border border-border bg-surface p-4">
           <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-faint">Strongest opportunities</h2>
-          {!ov ? <p className="mt-2 text-sm text-muted">Loading…</p> : ov.strongest.length === 0 ? <p className="mt-2 text-sm text-muted">No evaluated roles yet. Evaluate a job from Explore to see your fit.</p> : (
+          {!ov ? <p className="mt-2 text-sm text-muted">Loading…</p> : ov.strongest.length === 0 ? <p className="mt-2 text-sm text-muted">No open evaluated role worth pursuing yet (Skip verdicts, applied and closed roles are left out). Evaluate a job from Explore or Add a Job.</p> : (
             <ul className="mt-2 divide-y divide-border">
               {ov.strongest.map((o) => (
                 <li key={o.n}><Link href={`/pipeline/${o.n}`} className="flex items-start gap-3 py-2 hover:text-brand-text">
@@ -204,7 +205,7 @@ export function ArkaCommandCenter({ newThisWeek, followupsDue, awaiting, packHre
           <div className="rounded-xl border border-border bg-surface p-4">
             <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-faint">Needs attention</h2>
             <ul className="mt-2 space-y-1.5 text-sm">
-              {ov.staleApplied.map((a) => <li key={a.n}><Link href="/followups" className="text-foreground hover:text-brand-text">No reply from {a.company} since {a.date}: consider a follow-up →</Link></li>)}
+              {ov.staleApplied.slice(0, 2).map((a) => <li key={a.n}><Link href="/followups" className="text-foreground hover:text-brand-text">No reply from {a.company} since {a.date}: consider a follow-up →</Link></li>)}
               {ov.favouriteRoles.map((r) => <li key={r.url}><Link href="/pipeline?tab=INBOX" className="text-foreground hover:text-brand-text">★ New at {r.company}: {r.role} →</Link></li>)}
             </ul>
           </div>
@@ -257,7 +258,7 @@ export function ArkaCommandCenter({ newThisWeek, followupsDue, awaiting, packHre
             <p className="text-sm text-muted">Nothing yet. New matching roles, documents, status changes and follow-ups will appear here.</p>
           ) : (
             <ul className="space-y-2">
-              {status.activity.map((a, i) => (
+              {(showAll ? status.activity : status.activity.slice(0, 5)).map((a, i) => (
                 <li key={`${a.at}-${i}`}>
                   <Link href={a.href || "#"} className="flex items-start gap-2.5 rounded-md text-sm hover:text-brand-text">
                     <span aria-hidden className={`mt-1.5 size-1.5 shrink-0 rounded-full ${a.ok ? "bg-brand" : "bg-red-500"}`} />
@@ -266,6 +267,7 @@ export function ArkaCommandCenter({ newThisWeek, followupsDue, awaiting, packHre
                   </Link>
                 </li>
               ))}
+              {status.activity.length > 5 && <li><button type="button" onClick={() => setShowAll((v) => !v)} className="text-xs font-semibold text-brand-text hover:underline">{showAll ? "Show fewer" : `View all ${status.activity.length}`}</button></li>}
             </ul>
           )}
         </div>

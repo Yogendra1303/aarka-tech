@@ -16,7 +16,16 @@ export { pillTone, TONE };
 export function WorkerPills() {
   const { jobs, removeJob, clearFinished } = useJobs();
   const pathname = usePathname();
-  if (jobs.length === 0) return null;
+  // The sidebar shows what's happening now: running jobs plus anything finished in the last
+  // 24 hours, one entry per job (the latest attempt). Full history stays under History.
+  const DAY = 24 * 60 * 60 * 1000;
+  const seen = new Set<string>();
+  const recent = [...jobs].sort((a, b) => b.startedAt - a.startedAt).filter((j) => {
+    if (j.status !== "running" && Date.now() - (j.endedAt || j.startedAt) > DAY) return false;
+    const k = `${j.kind}|${j.input}`;
+    return seen.has(k) ? false : (seen.add(k), true);
+  });
+  if (recent.length === 0) return null;
   const running = jobs.filter((j) => j.status === "running").length;
   const finished = jobs.length - running;
 
@@ -35,7 +44,7 @@ export function WorkerPills() {
         )}
       </div>
       <ul className="space-y-1.5">
-        {jobs.slice(0, 6).map((j) => {
+        {recent.slice(0, 4).map((j) => {
           const active = pathname === `/jobs/${j.id}`;
           return (
             <li key={j.id} className="group relative">

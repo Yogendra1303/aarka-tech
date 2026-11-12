@@ -120,7 +120,9 @@ export function readAutomationStatus(): AutomationStatus {
   } catch { /* no drafts */ }
   // de-duplicate identical messages, keep the newest
   const seen = new Set<string>();
-  activity.sort((a, b) => b.at.localeCompare(a.at));
+  // Compare real times: sources write ISO, date-only and local formats, so string order is wrong.
+  const t = (x: string) => { const v = Date.parse(x); return Number.isFinite(v) ? v : 0; };
+  activity.sort((a, b) => t(b.at) - t(a.at));
   const dedup = activity.filter((a) => (seen.has(a.text) ? false : (seen.add(a.text), true)));
 
   return {

@@ -5,6 +5,8 @@
 // Insights are computed deterministically from these records; nothing is invented.
 import fs from "node:fs";
 import { getProfilePath } from "@/lib/core/profile-path.mjs";
+import { parseReportModel } from "@/lib/arka/report-model";
+import { computeSwot } from "@/lib/arka/swot";
 import path from "node:path";
 import crypto from "node:crypto";
 import * as yaml from "js-yaml";
@@ -92,7 +94,15 @@ export function readHub() {
     for (const g of block.split("\n").map((l) => l.replace(/^\s*-\s*"?|"?\s*$/g, "")).filter(Boolean)) reportGaps.push({ gap: g, job: `${(a as Rec).company} — ${(a as Rec).role}` });
   }
 
+  const evaluated = readApplications().flatMap((a) => {
+    const rp = /\(([^)]+)\)/.exec(String((a as Rec).report || ""))?.[1]?.replace(/^\.\.\//, "");
+    if (!rp) return [];
+    try { const md = fs.readFileSync(path.join(root(), rp), "utf8"); const model = parseReportModel(md); return [{ company: String((a as Rec).company), role: String((a as Rec).role), n: String((a as Rec).n), date: model.date || String((a as Rec).date || ""), model }]; } catch { return []; }
+  });
+  const swot = computeSwot({ achievements, skills, employment, projects, discrepancies: readJson<Rec[]>(path.join(kb, "discrepancies.json"), []), reports: evaluated, kbDir: kb, cvPath: path.join(root(), "cv.md") });
+
   return {
+    swot,
     overview: {
       name: profile.name,
       headline: user.headline || String(narrative.headline || ""),
@@ -196,10 +206,10 @@ export function saveOriginal(name: string, bytes: Buffer) {
 }
 
 // ---------- user-editable records
-const PROJECT_FIELDS = ["name", "client", "type", "role", "start_text", "end_text", "description", "contribution", "deliverables", "outcomes", "technologies", "skills", "confidentiality", "status", "include_in_resumes", "public_link"];
+const PROJECT_FIELDS = ["name", "client", "type", "role", "start_text", "end_text", "description", "contribution", "deliverables", "outcomes", "technologies", "skills", "confidentiality", "status", "include_in_resumes", "public_link", "source", "imported_at"];
 export function saveProject(input: Rec) {
   const data = userRecords();
-  const id = String(input.id || `USR-${Date.now().toString(36)}`);
+  const id = String(input.id || `USR-${Date.now().toString(36)}-${crypto.randomBytes(3).toString("hex")}`); // unique even within one millisecond
   if (!String(input.name || "").trim()) throw new Error("Project name is required.");
   const clean: Rec = { id, review_status: "needs_confirmation", updated: new Date().toISOString() };
   for (const k of PROJECT_FIELDS) if (k in input) clean[k] = typeof input[k] === "string" ? String(input[k]).slice(0, 2000) : input[k];
@@ -258,7 +268,8 @@ export function saveLink(service: string, url: string) {
   const svc = SERVICES.find((s) => s.id === service); if (!svc) throw new Error("Unknown service.");
   const data = userRecords() as unknown as Record<string, unknown>; const links = (data.links || {}) as Links;
   if (!url) { delete links[service]; } else {
-    const u = url.trim().startsWith("http") ? url.trim() : `https://${url.trim()}`;
+    let u = url.trim().startsWith("http") ? url.trim() : `https://${url.trim()}`;
+    try { const x = new URL(u); x.hash = ""; x.search = ""; x.protocol = "https:"; u = x.toString().replace(/\/+$/, ""); } catch { throw new Error(`That does not look like a ${svc.name} profile URL.`); }
     if (!svc.pattern.test(u)) throw new Error(`That does not look like a ${svc.name} profile URL.`);
     links[service] = { url: u, saved: new Date().toISOString() };
   }
@@ -275,7 +286,35 @@ export async function refreshGithub() {
   gh.sync = { at: new Date().toISOString(), repos }; data.links = links; writeJson(USER(), data);
   return gh.sync;
 }
+// Explicit repository import: preview first (nothing saved), then import the ones you pick.
+export async function previewGithubRepos() {
+  const gh = linksOf().github; if (!gh) throw new Error("Save your GitHub profile URL first.");
+  const user = gh.url.replace(/\/+$/, "").split("/").pop();
+  const r = await fetch(`https://api.github.com/users/${encodeURIComponent(user || "")}/repos?per_page=100&sort=updated`, { headers: { Accept: "application/vnd.github+json", "User-Agent": "aarka-tech-local" }, signal: AbortSignal.timeout(20000) });
+  if (r.status === 403 || r.status === 429) {
+    const reset = Number(r.headers.get("x-ratelimit-reset") || 0);
+    throw new Error(`GitHub's public limit is reached for now${reset ? `; try again after ${new Date(reset * 1000).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}` : ""}.`);
+  }
+  if (!r.ok) throw new Error(r.status === 404 ? "GitHub says that user does not exist." : `GitHub returned HTTP ${r.status}.`);
+  const have = new Set(userRecords().projects.map((p) => String(p.public_link || "").toLowerCase()).filter(Boolean));
+  return ((await r.json()) as Record<string, unknown>[]).map((x) => ({
+    name: String(x.name), url: String(x.html_url), description: (x.description as string) || null, language: (x.language as string) || null,
+    updated: String(x.pushed_at || x.updated_at), fork: !!x.fork, stars: Number(x.stargazers_count || 0), imported: have.has(String(x.html_url).toLowerCase()),
+  }));
+}
+export function importGithubRepos(repos: { name: string; url: string; description?: string | null; language?: string | null }[]) {
+  const have = new Set(userRecords().projects.map((p) => String(p.public_link || "").toLowerCase()));
+  const at = new Date().toISOString(); const added: string[] = [];
+  for (const r of repos.slice(0, 50)) {
+    if (!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/.test(r.url) || have.has(r.url.toLowerCase())) continue;
+    saveProject({ name: r.name, type: "Open-source / personal project", description: r.description || "", technologies: r.language || "", public_link: r.url, source: "GitHub public API", imported_at: at, include_in_resumes: false });
+    have.add(r.url.toLowerCase()); added.push(r.name);
+  }
+  return { added, at };
+}
 export function readIntegrations() {
   const links = linksOf();
+  // LinkedIn may only be in your profile (from the resume); show it the same way.
+  if (!links.linkedin) { const li = readProfile().preferences.linkedin; if (li) links.linkedin = { url: `https://${li.replace(/^https?:\/\//, "").replace(/\/+$/, "")}`, saved: "" }; }
   return SERVICES.map((s) => ({ id: s.id, name: s.name, kind: s.kind, contributes: s.contributes, url: links[s.id]?.url || null, saved: links[s.id]?.saved || null, lastSync: links[s.id]?.sync?.at || null, repos: links[s.id]?.sync?.repos?.length ?? null, topRepos: (links[s.id]?.sync?.repos || []).slice(0, 5) }));
 }

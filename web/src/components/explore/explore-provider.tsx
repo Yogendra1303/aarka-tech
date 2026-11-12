@@ -55,6 +55,8 @@ type ExploreCtx = {
   initFilters: (f: ExploreFilters) => void;
   phase: Phase;
   running: boolean;
+  /** true while saved results are being read back (no network scan is happening) */
+  loadingSaved: boolean;
   offers: DiscoveredOffer[];
   sources: Partial<Record<DiscoverySource, SourceState>>;
   matchCount: number;
@@ -138,6 +140,7 @@ export function ExploreProvider({ children }: { children: React.ReactNode }) {
   const [offers, setOffers] = useState<DiscoveredOffer[]>([]);
   const [sources, setSources] = useState<Partial<Record<DiscoverySource, SourceState>>>({});
   const [matchCount, setMatchCount] = useState(0);
+  const [loadingSaved, setLoadingSaved] = useState(false);
   const [companiesScanned, setCompaniesScanned] = useState(0);
   // Authoritative scan-health signals (scanner --json mode, #1199): tell a capped /
   // degraded scan from a genuinely empty one, and power a "scanned X of Y" banner.
@@ -355,6 +358,7 @@ export function ExploreProvider({ children }: { children: React.ReactNode }) {
     if (runningRef.current) return;
     const run = runs.current.start();
     runningRef.current = true;
+    setLoadingSaved(true);
     setPhase("casting");
     setStatus("Loading fresh matches…");
     setEmployerOutcome(null);
@@ -395,7 +399,7 @@ export function ExploreProvider({ children }: { children: React.ReactNode }) {
       setError(e instanceof Error ? e.message : "Couldn't load fresh matches.");
       setPhase("failed");
     } finally {
-      if (runs.current.owns(run)) runningRef.current = false;
+      if (runs.current.owns(run)) { runningRef.current = false; setLoadingSaved(false); }
     }
   }, []);
 
@@ -660,11 +664,12 @@ export function ExploreProvider({ children }: { children: React.ReactNode }) {
     () => ({
       filters, setFilters, initFilters, phase,
       running: phase === "casting" || phase === "scanning" || phase === "revealing" || phase === "hunting",
+      loadingSaved,
       offers, sources, matchCount, companiesScanned, companiesAvailable, capHit, droppedNoDate, status, employerOutcome, partial, error, scannerMissing, added, adding,
       discover, loadFresh, addToPipeline, applyPatch, reset,
       mode, setMode, aiIntent, setAiIntent, discoverAI, aiTrace, aiCost,
     }),
-    [filters, setFilters, initFilters, phase, offers, sources, matchCount, companiesScanned, companiesAvailable, capHit, droppedNoDate, status, employerOutcome, partial, error, scannerMissing, added, adding, discover, loadFresh, addToPipeline, applyPatch, reset, mode, setMode, aiIntent, discoverAI, aiTrace, aiCost],
+    [filters, setFilters, initFilters, phase, loadingSaved, offers, sources, matchCount, companiesScanned, companiesAvailable, capHit, droppedNoDate, status, employerOutcome, partial, error, scannerMissing, added, adding, discover, loadFresh, addToPipeline, applyPatch, reset, mode, setMode, aiIntent, discoverAI, aiTrace, aiCost],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
